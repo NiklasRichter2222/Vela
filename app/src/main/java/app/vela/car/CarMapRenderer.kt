@@ -345,11 +345,15 @@ class CarMapRenderer(
             app.vela.ui.theme.ThemeMode.LIGHT -> false
             app.vela.ui.theme.ThemeMode.DARK, app.vela.ui.theme.ThemeMode.AMOLED -> true
             app.vela.ui.theme.ThemeMode.AUTO -> app.vela.ui.theme.AppTheme.night.value
-            else -> runCatching { carContext.isDarkMode }.getOrDefault(false)
+            else -> {
+                val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+                app.vela.ui.NavSchedule.carDarkOverride(sysDark)
+            }
         }
     }
 
     fun start() {
+        app.vela.ui.NavSchedule.resetToggle()
         collectJob?.cancel()
         collectJob = scope.launch {
             CarLocationAccess.granted.first { it } // asked for on the landing screen if missing

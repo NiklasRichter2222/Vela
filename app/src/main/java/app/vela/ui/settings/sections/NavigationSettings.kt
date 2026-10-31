@@ -156,6 +156,25 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             hint = stringResource(R.string.settings_route_trail_hint),
         )
 
+        GroupDivider()
+        val customNavLine = app.vela.ui.NavLineWidth.custom.value
+        ToggleRow(
+            label = "Custom nav line width",
+            checked = customNavLine,
+            onCheckedChange = { app.vela.ui.NavLineWidth.setCustom(context, it) },
+        )
+        if (customNavLine) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("Width multiplier: ${String.format("%.1f", app.vela.ui.NavLineWidth.widthMultiplier.value)}x", style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.Slider(
+                    value = app.vela.ui.NavLineWidth.widthMultiplier.value,
+                    onValueChange = { app.vela.ui.NavLineWidth.setMultiplier(context, (it * 10).toInt() / 10f) },
+                    valueRange = 0.1f..2.0f,
+                    steps = 18
+                )
+            }
+        }
+
         // Bike routing preference (issue #401): safety over speed, on by default.
         GroupDivider()
         ToggleRow(

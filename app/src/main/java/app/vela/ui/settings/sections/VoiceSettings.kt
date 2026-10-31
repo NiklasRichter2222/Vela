@@ -212,6 +212,9 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             val volPrefs = androidx.compose.ui.platform.LocalContext.current
                 .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
             var voiceVol by remember { mutableStateOf(volPrefs.getFloat("voice_volume", 1.0f)) }
+            val predefinedVols = listOf(0.6f, 1.0f, 1.6f, 2.2f)
+            var isCustomVol by remember { mutableStateOf(!predefinedVols.contains(voiceVol)) }
+
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
@@ -219,13 +222,40 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     1.0f to stringResource(R.string.settings_voice_volume_normal),
                     1.6f to stringResource(R.string.settings_voice_volume_louder),
                     2.2f to stringResource(R.string.settings_voice_volume_loudest),
+                    -1f to "Custom"
                 ).forEach { (v, label) ->
+                    val isSelected = if (v == -1f) isCustomVol else (voiceVol == v && !isCustomVol)
                     FilterChip(
-                        selected = voiceVol == v,
-                        onClick = { voiceVol = v; vm.setVoiceVolume(v) },
+                        selected = isSelected,
+                        onClick = {
+                            if (v == -1f) {
+                                isCustomVol = true
+                            } else {
+                                isCustomVol = false
+                                voiceVol = v
+                                vm.setVoiceVolume(v)
+                            }
+                        },
                         label = { Text(label) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
+            if (isCustomVol) {
+                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text("Volume multiplier: ${String.format("%.1f", voiceVol)}x", style = MaterialTheme.typography.bodyMedium)
+                    androidx.compose.material3.Slider(
+                        value = voiceVol,
+                        onValueChange = { 
+                            val newVol = (it * 10).toInt() / 10f
+                            voiceVol = newVol
+                        },
+                        onValueChangeFinished = {
+                            vm.setVoiceVolume(voiceVol)
+                        },
+                        valueRange = 0.5f..5.0f,
+                        steps = 44
                     )
                 }
             }

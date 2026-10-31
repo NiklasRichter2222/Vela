@@ -122,6 +122,55 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
+        SettingsGroup(title = "Android Auto Dark Mode Schedule") {
+            val scheduleEnabled = app.vela.ui.NavSchedule.enabled.value
+            ToggleRow(
+                label = "Enable dark mode on schedule",
+                checked = scheduleEnabled,
+                onCheckedChange = { app.vela.ui.NavSchedule.setEnabled(context, it) },
+                hint = "Overrides Android Auto's dark mode initially if set"
+            )
+            if (scheduleEnabled) {
+                GroupDivider()
+                ToggleRow(
+                    label = "Use sunup/sundown time",
+                    checked = app.vela.ui.NavSchedule.useSun.value,
+                    onCheckedChange = { app.vela.ui.NavSchedule.setUseSun(context, it) }
+                )
+                if (!app.vela.ui.NavSchedule.useSun.value) {
+                    GroupDivider()
+                    SelectableRow(
+                        label = "Start time: ${String.format("%02d:%02d", app.vela.ui.NavSchedule.startHour.value, app.vela.ui.NavSchedule.startMinute.value)}",
+                        selected = false,
+                        onClick = {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m -> app.vela.ui.NavSchedule.setStart(context, h, m) },
+                                app.vela.ui.NavSchedule.startHour.value,
+                                app.vela.ui.NavSchedule.startMinute.value,
+                                true
+                            ).show()
+                        }
+                    )
+                    GroupDivider()
+                    SelectableRow(
+                        label = "End time: ${String.format("%02d:%02d", app.vela.ui.NavSchedule.endHour.value, app.vela.ui.NavSchedule.endMinute.value)}",
+                        selected = false,
+                        onClick = {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m -> app.vela.ui.NavSchedule.setEnd(context, h, m) },
+                                app.vela.ui.NavSchedule.endHour.value,
+                                app.vela.ui.NavSchedule.endMinute.value,
+                                true
+                            ).show()
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
         SettingsGroup {
             ToggleRow(
                 label = stringResource(R.string.settings_page_transitions),

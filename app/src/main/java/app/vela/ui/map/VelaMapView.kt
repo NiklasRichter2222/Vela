@@ -83,7 +83,11 @@ private const val ROUTE_LAYER = "vela-route"
 // every zoom and read THIN at nav zooms next to Google's fat stripe (user 2026-07-15). Values are
 // Google-eyeballed: browse ~unchanged, street-level noticeably wider. Widened again at street zoom
 // with the roads (2026-10-03): at the old 11-17 px it sat inside a real-width street like a pencil line.
-private fun routeWidth(): Expression = realWidthCurve(ROUTE_BASE_STOPS, ROUTE_REAL_M, ROUTE_CAP_DP)
+private fun routeWidth(): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+    val base = ROUTE_BASE_STOPS.map { it * mult }.toFloatArray()
+    return realWidthCurve(base, ROUTE_REAL_M * mult, ROUTE_CAP_DP * mult)
+}
 private val ROUTE_BASE_STOPS = floatArrayOf(10f, 7f, 14f, 11.2f, 15f, 11.5f, 16f, 11f, 17.5f, 17f, 18.5f, 20.4f)
 // The stripe in meters from street zoom in (2026-10-03, "the blue line is thinner than the road"):
 // at the old pixel curve it was half a real-width arterial at nav zoom. 8.5 m (10 m until the owner
@@ -1158,6 +1162,8 @@ fun VelaMapView(
     val trailOn = app.vela.ui.RouteTrail.on.value
     val trailHolder = rememberUpdatedState(trailOn)
     LaunchedEffect(trailOn) { paintReset[0] = true; lastGradM[0] = -1e9 } // -1e9 so the block runs even while stopped
+
+
     // A route COLOR change (pause turns the line lavender, resume turns it back) repaints too: the
     // ahead line's gradient is only re-uploaded when the cut piece slides, so without this only
     // the 400 m around the arrow changed color and the rest stayed blue (4a, 2026-09-21).
@@ -1330,6 +1336,19 @@ fun VelaMapView(
         }
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
+    
+    val lineWidthMult = app.vela.ui.NavLineWidth.widthMultiplier.value
+    val lineWidthCustom = app.vela.ui.NavLineWidth.custom.value
+    LaunchedEffect(lineWidthMult, lineWidthCustom) {
+        val width = routeWidth()
+        styleRef?.let { style ->
+            (style.getLayer(ROUTE_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+            (style.getLayer(ROUTE_TRAFFIC_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+            (style.getLayer(ROUTE_AHEAD_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+            (style.getLayer(ROUTE_TAIL_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+            (style.getLayer(ROUTE_CUT_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+        }
+    }
     val navPuck = remember { NavPuck() }
     val turnDeclutter = remember { TurnDeclutter() }
     // The cross-street bubbles this map hid because the camera left the car (ids, to put back).
