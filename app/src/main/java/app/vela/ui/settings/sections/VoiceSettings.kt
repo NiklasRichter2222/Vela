@@ -222,7 +222,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
                     1.0f to stringResource(R.string.settings_voice_volume_normal),
                     1.6f to stringResource(R.string.settings_voice_volume_louder),
                     2.2f to stringResource(R.string.settings_voice_volume_loudest),
-                    -1f to "Custom"
+                    -1f to stringResource(R.string.settings_voice_volume_custom)
                 ).forEach { (v, label) ->
                     val isSelected = if (v == -1f) isCustomVol else (voiceVol == v && !isCustomVol)
                     FilterChip(
@@ -244,7 +244,7 @@ internal fun VoiceSettingsScreen(vm: MapViewModel, onBack: () -> Unit, openLibra
             }
             if (isCustomVol) {
                 androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text("Volume multiplier: ${String.format("%.1f", voiceVol)}x", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_voice_volume_multiplier, String.format(java.util.Locale.getDefault(), "%.1f", voiceVol)), style = MaterialTheme.typography.bodyMedium)
                     androidx.compose.material3.Slider(
                         value = voiceVol,
                         onValueChange = { 

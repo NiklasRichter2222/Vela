@@ -1075,6 +1075,8 @@
     <string name="settings_voice_volume_normal">Normal</string>
     <string name="settings_voice_volume_louder">Louder</string>
     <string name="settings_voice_volume_loudest">Loudest</string>
+    <string name="settings_voice_volume_custom">Custom</string>
+    <string name="settings_voice_volume_multiplier">Volume multiplier: %1$sx</string>
     <string name="settings_voice_volume_hint">How loud spoken directions play over your media. Louder tiers apply to the Vela voice; system voices can only be made softer.</string>
     <string name="place_avoid_not_honored">These routes may still use tolls, highways, or ferries: Google could not be reached to route around them, and the open router cannot. In a downloaded area Vela avoids them offline.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device. Import also takes a list from Google Takeout\'s Saved folder (one CSV per list); each place in it is looked up, so it needs a connection.</string>
@@ -1271,6 +1273,11 @@
     <string name="settings_theme_auto_hint">Light during the day, dark after sunset, worked out from your location.</string>
     <string name="settings_nav_day_night">Day and night while navigating</string>
     <string name="settings_nav_day_night_hint">Keeps your chosen theme everywhere else, and switches by daylight only while you are driving.</string>
+    <string name="settings_nav_schedule_enable">Enable dark mode on schedule</string>
+    <string name="settings_nav_schedule_enable_hint">Overrides Android Auto\'s dark mode initially if set</string>
+    <string name="settings_nav_schedule_sun">Use sunup/sundown time</string>
+    <string name="settings_nav_schedule_start">Start time: %1$s</string>
+    <string name="settings_nav_schedule_end">End time: %1$s</string>
     <string name="mapscreen_shortcut_add">Add</string>
     <string name="settings_road_label">Current road name</string>
     <string name="settings_road_label_off">Off</string>
@@ -1330,6 +1337,8 @@
     <string name="settings_turn_declutter">Simplify the map in turns</string>
     <string name="settings_turn_declutter_hint">While the map swings through a turn, only street names stay on it. Places, signs and cameras come back as soon as it settles. Keeps turns smooth on slower phones.</string>
     <string name="settings_route_trail_hint">Keeps the part of the route you have already driven drawn in gray behind the arrow. Off hides it, so only the road ahead is drawn.</string>
+    <string name="settings_nav_line_custom">Custom navigation line width</string>
+    <string name="settings_nav_line_multiplier">Width multiplier: %1$sx</string>
     <string name="settings_bike_safe">Bike routes prefer bike lanes and quiet streets</string>
     <string name="settings_bike_safe_hint">Cycling routes favor signed cycle routes, bike lanes and residential streets over the fastest road, the way Google routes bikes. Uses the offline map where you have one downloaded, otherwise an open router online. Off gives the plain fastest bike route.</string>
     <string name="settings_route_picker">Google-style route picker</string>

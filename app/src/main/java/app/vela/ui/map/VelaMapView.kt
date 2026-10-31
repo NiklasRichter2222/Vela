@@ -1341,12 +1341,17 @@ fun VelaMapView(
     val lineWidthCustom = app.vela.ui.NavLineWidth.custom.value
     LaunchedEffect(lineWidthMult, lineWidthCustom) {
         val width = routeWidth()
+        val outlineWidth = routeOutlineWidth()
         styleRef?.let { style ->
             (style.getLayer(ROUTE_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
             (style.getLayer(ROUTE_TRAFFIC_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
             (style.getLayer(ROUTE_AHEAD_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
             (style.getLayer(ROUTE_TAIL_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
             (style.getLayer(ROUTE_CUT_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
+            
+            for (id in arrayOf(ROUTE_LAYER, ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B, ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B, ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B)) {
+                (style.getLayer(id + ROUTE_OUTLINE_SUFFIX) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(outlineWidth))
+            }
         }
     }
     val navPuck = remember { NavPuck() }
@@ -10967,8 +10972,12 @@ private const val ROUTE_OUTLINE_LIGHT = "#0e326a"
 private const val ROUTE_OUTLINE_DARK = "#061a45"
 /** Each side of the outline, dp. */
 private const val ROUTE_OUTLINE_DP = 1.25
-private fun routeOutlineWidth(): Expression = realWidthCurve(ROUTE_BASE_STOPS, ROUTE_REAL_M, ROUTE_CAP_DP) { z ->
-    -2.0 * ROUTE_OUTLINE_DP * ((z - 9.0) / 5.0).coerceIn(0.4, 1.0)
+private fun routeOutlineWidth(): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+    val base = ROUTE_BASE_STOPS.map { it * mult }.toFloatArray()
+    return realWidthCurve(base, ROUTE_REAL_M * mult, ROUTE_CAP_DP * mult) { z ->
+        -2.0 * ROUTE_OUTLINE_DP * ((z - 9.0) / 5.0).coerceIn(0.4, 1.0)
+    }
 }
 /** Transparent before [p] (the driven part), the outline color after it. */
 private fun routeOutlineGradient(p: Float, dark: Boolean): Expression =
