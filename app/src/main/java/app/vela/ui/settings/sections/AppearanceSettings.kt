@@ -131,8 +131,15 @@ internal fun AppearanceSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
             if (scheduleEnabled) {
                 GroupDivider()
+                val sunTimes = app.vela.ui.theme.AppTheme.sunriseSunset.value
+                val sunTimesText = if (sunTimes != null) {
+                    val format = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                    val rise = format.format(java.util.Date(sunTimes.first))
+                    val set = format.format(java.util.Date(sunTimes.second))
+                    " ($rise - $set)"
+                } else ""
                 ToggleRow(
-                    label = stringResource(R.string.settings_nav_schedule_sun),
+                    label = stringResource(R.string.settings_nav_schedule_sun) + sunTimesText,
                     checked = app.vela.ui.NavSchedule.useSun.value,
                     onCheckedChange = { app.vela.ui.NavSchedule.setUseSun(context, it) }
                 )

@@ -141,7 +141,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
-- The route line is colored by congestion. "Road behind you" keeps the driven part in gray.
+- The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom navigation line width" can scale its width up to 2x.
 - The route line is drawn down the middle of the map's roads, where Google's own line would sit a
   lane to one side.
 - Your speed and the posted limit. "Show speed and speed limit" hides them.
@@ -237,7 +237,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Spoken directions use a neural voice that runs on the phone. The Vela voice downloads once.
 - The "Voice library" has about 40 Piper voices. Any text-to-speech voice on the phone works too.
 - "Spoken directions" is the on and off switch, the same as mute in a drive.
-- "Guidance volume", "Voice speed" and "Test voice". The Vela voice is leveled to a standard
+- "Guidance volume" (with a custom multiplier slider up to 5x), "Voice speed" and "Test voice". The Vela voice is leveled to a standard
   loudness, and the volume setting scales from there.
 - The voice follows the directions language. Vela offers a download when a language has no
   voice, and a voice of another language says so on its row.
@@ -302,7 +302,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Look and settings
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
-  while navigating" applies it to drives only.
+  while navigating" applies it to drives only. An "Android Auto schedule" can override the initial Day/Night state reported by the car.
 - "Map" sets the map light or dark apart from the app. "Map look" picks the basemap style: the
   Vela look on OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black (its Dark
   style) as served, on the same tiles. "Map colors" is Modern, Classic or Contrast (a night

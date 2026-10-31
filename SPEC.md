@@ -3959,7 +3959,7 @@ A version query on `BAKED_URL` moves the map cache off old tiles after a rebake.
 #### Route line
 
 - `routeWidth()` is the wider of a pixel curve (7 / 11.2 / 11.5 / 11 / 17 / 20.4 dp at z10 / 14 /
-  15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). At 8.5 m it
+  15 / 16 / 17.5 / 18.5) and `ROUTE_REAL_M` (8.5 m), capped at `ROUTE_CAP_DP` (32). The line width, its base points, and the cap can be scaled dynamically using the Custom Navigation Line Width multiplier in settings. At 8.5 m it
   covers a two-lane street or one carriageway with a little road showing each side.
 - Alternates use `ALT_REAL_M` (7.65 m), capped at `ALT_CAP_DP` (30), with their edge
   (`vela-alt-route-edge`) inside that width. Both widths follow `roadWidthScale`.
@@ -4958,7 +4958,7 @@ download self-heals. The selection is `voice_model`, the speaker per voice `voic
   `SpeechText.spokenClock` (English) spells out clock times, which otherwise read as a
   measurement. A new spoken string with numbers, units or punctuation needs the same look, and
   a test.
-- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest) scales the neural voice from a
+- `voice_volume` (0.6 softer, 1 normal, 1.6 louder, 2.2 loudest, or a custom multiplier up to 5) scales the neural voice from a
   leveled base (`VoiceLevel`). The voices render well under full scale: the default Vela voice
   (Piper `en_US-hfc_female-medium`) has a long-run RMS of about 0.053 on a Pixel 4a, a gain of
   2.43 at Normal. Each line gets one gain, `TARGET_RMS` (0.13) over
