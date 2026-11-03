@@ -173,7 +173,8 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         app.vela.ui.NavLineWidth.setMultiplier(context, rounded)
                     },
                     valueRange = 0.1f..2.0f,
-                    steps = 18
+                    steps = 18,
+                    modifier = Modifier.dpadHighlight(DpadShape(12.dp)),
                 )
             }
         }
@@ -375,6 +376,32 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 onCheckedChange = { app.vela.ui.CarSpeed.set(context, it) },
                 hint = stringResource(R.string.settings_car_speed_hint),
             )
+            val upcomingOn = app.vela.ui.SpeedDisplay.upcomingOn.value
+            ToggleRow(
+                label = stringResource(R.string.settings_speed_upcoming),
+                checked = upcomingOn,
+                onCheckedChange = { app.vela.ui.SpeedDisplay.setUpcoming(context, it) },
+                hint = stringResource(R.string.settings_speed_upcoming_hint),
+            )
+            if (upcomingOn) {
+                val distM = app.vela.ui.SpeedDisplay.upcomingMeters.value
+                androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        stringResource(R.string.settings_speed_upcoming_distance, app.vela.ui.formatDistance(distM.toDouble())),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    androidx.compose.material3.Slider(
+                        value = distM.toFloat(),
+                        onValueChange = {
+                            val stepped = (kotlin.math.round(it / 50f) * 50f).toInt()
+                            app.vela.ui.SpeedDisplay.setUpcomingMeters(context, stepped)
+                        },
+                        valueRange = 100f..1000f,
+                        steps = 17,
+                        modifier = Modifier.dpadHighlight(DpadShape(12.dp)),
+                    )
+                }
+            }
         }
         // Over-the-limit voice alert (issue #404): its own opt-in, off by default. Sits with the
         // other spoken extras; the timing is in :core SpeedingAlerts.

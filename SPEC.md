@@ -5568,7 +5568,11 @@ the same `:core` singletons as the phone (`CarDeps`).
   badge on the phone and the car, and skips the car's limit lookup. Nested under it, "Your speed
   on the car screen" (`CarSpeed`, `car_speed_on`, default off, user 2026-10-15) draws the car's
   own badge; off, the car shows the limit sign alone, in the badge's corner, since a car has a
-  speedometer. The spoken speeding alert is a separate setting. The car's limit sign follows the
+  speedometer. Also nested under it, "Show upcoming speed limit changes" (`SpeedDisplay.upcomingOn`,
+  `speed_upcoming_on`, default off) and its distance slider (`SpeedDisplay.upcomingMeters`,
+  `speed_upcoming_m`, 100..1000 m, default 300 m) sample along the active route polyline or the
+  current road ahead in driving mode and show a compact secondary speed limit sign with distance
+  when the limit ahead differs. The spoken speeding alert is a separate setting. The car's limit sign follows the
   phone's: the "SPEED LIMIT" rectangle in miles, the red-ring disc in kilometers, and a red
   number past 3 mph or 5 km/h over.
 - The guidance voice is band-limited by the protocol: the Android Auto guidance stream is 16 kHz

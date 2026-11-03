@@ -141,10 +141,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Off the route, or driving against it, Vela reroutes with a chime, a buzz and a banner.
 - A faster route is offered when traffic changes. "Take faster routes automatically" accepts an
   unanswered offer.
-- The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom navigation line width" can scale its width up to 2x.
+- The route line is colored by congestion. "Road behind you" keeps the driven part in gray. "Custom route line width" can scale its width from 0.1x to 2x, tapering with camera tilt and distance.
 - The route line is drawn down the middle of the map's roads, where Google's own line would sit a
   lane to one side.
-- Your speed and the posted limit. "Show speed and speed limit" hides them.
+- Your speed and the posted limit. "Show speed and speed limit" hides them, and "Show upcoming speed limit changes" previews the next speed limit and distance ahead on your route or current road (100 m to 1 km).
 - Timed limits follow the clock, such as 100 by day and 130 at night on Dutch motorways. Online
   only for now.
 - "Road ahead bar" is a strip with the traffic, lights, stop signs, crossings and cameras still
@@ -302,7 +302,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Look and settings
 
 - Themes are follow the system, Light, Dark, "AMOLED black" and "Day and night". "Day and night
-  while navigating" applies it to drives only. An "Android Auto schedule" can override the initial Day/Night state reported by the car.
+  while navigating" applies it to drives only. "Start dark mode on a schedule" sets the initial day/night state at launch (sunset to sunrise or custom hours) until the system or car switches on its own.
 - "Map" sets the map light or dark apart from the app. "Map look" picks the basemap style: the
   Vela look on OpenFreeMap Liberty, or OpenFreeMap's Bright, Positron, Fiord or Black (its Dark
   style) as served, on the same tiles. "Map colors" is Modern, Classic or Contrast (a night

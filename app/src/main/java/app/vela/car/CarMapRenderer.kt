@@ -85,6 +85,8 @@ class CarMapRenderer(
     @Volatile private var targetPuck: LatLng? = null
     @Volatile private var speedMps: Double = 0.0
     @Volatile private var speedLimitKmh: Double? = null
+    @Volatile private var upcomingLimitKmh: Double? = null
+    @Volatile private var upcomingLimitDistM: Double? = null
     private var center: LatLng? = null
     private var zoom = 16.5
     private var showingWorld = false // the no-location placeholder view is up
@@ -352,8 +354,13 @@ class CarMapRenderer(
         }
     }
 
+    fun onConfigurationChanged() {
+        val sysDark = runCatching { carContext.isDarkMode }.getOrDefault(false)
+        app.vela.ui.NavSchedule.onCarDarkSignal(sysDark)
+        requestRender()
+    }
+
     fun start() {
-        app.vela.ui.NavSchedule.resetToggle()
         collectJob?.cancel()
         collectJob = scope.launch {
             CarLocationAccess.granted.first { it } // asked for on the landing screen if missing
@@ -414,12 +421,6 @@ class CarMapRenderer(
                     zoom = 16.5; zoomTarget = 16.5
                     center = here
                 }
-                // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
-                // The graph LocationIndex snap runs OFF the main thread (this collector is on
-                // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
-                speedLimitKmh = if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) // hidden: no lookup either
-                    withContext(Dispatchers.Default) { runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull() }
-                else null
                 // The arrow's heading (the ticker eases toward this, so it never snap-rotates):
                 //  1. Moving with a TRUSTWORTHY GPS course → the actual travel direction (what the
                 //     phone nav uses; correct even when off-route). A stationary or low-confidence
@@ -432,6 +433,36 @@ class CarMapRenderer(
                 val trustCourse = courseOk && (!loc.hasBearingAccuracy() || loc.bearingAccuracyDegrees <= 45f)
                 if (trustCourse) { targetHeading = fixCourse!!; courseKnown = true }
                 else if (!courseKnown || speedMps > STOPPED_MPS) routeHeading(here)?.let { targetHeading = it; courseKnown = true }
+                // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
+                // The graph LocationIndex snap runs OFF the main thread (this collector is on
+                // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
+                if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) {
+                    val ns = navSession.state.value
+                    val lookAheadM = app.vela.ui.SpeedDisplay.upcomingMeters.value.toDouble()
+                    val wantUpcoming = app.vela.ui.SpeedDisplay.upcomingOn.value
+                    val pathPair: Pair<List<LatLng>, Double>? = if (!wantUpcoming) null else {
+                        val poly = ns.route?.polyline
+                        if (ns.navigating && poly != null && poly.size >= 2) poly to ns.nav.traveledM
+                        else if (courseKnown) listOf(here, here.destinationPoint(lookAheadM + 60.0, targetHeading)) to 0.0
+                        else null
+                    }
+                    val (curLimit, upPair) = withContext(Dispatchers.Default) {
+                        val cur = runCatching { routeEngine?.currentRoadLimit(here.lat, here.lng) }.getOrNull()
+                        val up = if (cur != null && pathPair != null) {
+                            runCatching {
+                                routeEngine?.upcomingRoadLimit(pathPair.first, pathPair.second, lookAheadM, cur)
+                            }.getOrNull()
+                        } else null
+                        cur to up
+                    }
+                    speedLimitKmh = curLimit
+                    upcomingLimitKmh = upPair?.first
+                    upcomingLimitDistM = upPair?.second
+                } else {
+                    speedLimitKmh = null
+                    upcomingLimitKmh = null
+                    upcomingLimitDistM = null
+                }
                 if ((previewRoute != null || resultPins.isNotEmpty()) && !navigating()) { requestRender(); return@collect } // a preview or the results own the camera
                 // Auto-recenter a few seconds after the user pans (Google-style: pan to look around, then snap back).
                 if (!following && !overview && android.os.SystemClock.uptimeMillis() - lastPanMs > RECENTER_MS) following = true
@@ -483,6 +514,7 @@ class CarMapRenderer(
                 if (abs(zoomTarget - zoom) > 0.004) { zoom += (zoomTarget - zoom) * ZOOM_EASE; moved = true }
                 if (stepFling(dt)) moved = true
                 if (following && previewRoute == null) puck?.let { center = it }
+                if (themedNight != null && themedNight != isNight()) moved = true
                 if (moved) requestRender()
                 kotlinx.coroutines.delay(TICK_MS)
             }
@@ -897,11 +929,14 @@ class CarMapRenderer(
                 runCatching { drawRoute(canvas, snap, sx, sy) }
                 runCatching { drawCorridor(canvas, snap, sx, sy) }
             } else if (preview != null && preview.polyline.size >= 2) {
-                // Preview screen: the whole route in blue, framed.
+                // Preview screen: the whole route in blue, framed, scaled by the user's line width setting.
+                val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+                otherRoutePaint.strokeWidth = 14f * mult
+                val mainPaint = trafficPaints[0]!!.apply { strokeWidth = 20f * mult }
                 for (other in previewOthers) {
                     if (other.polyline.size >= 2) runCatching { canvas.drawPath(pathOf(snap, other.polyline, other.polyline.indices, sx, sy), otherRoutePaint) }
                 }
-                runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), trafficPaints[0]!!) }
+                runCatching { canvas.drawPath(pathOf(snap, preview.polyline, preview.polyline.indices, sx, sy), mainPaint) }
                 runCatching { drawDestination(canvas, snap, preview.polyline.last(), sx, sy) }
             }
             if (!navigating()) resultPins.forEachIndexed { i, at -> runCatching { drawResultPin(canvas, snap, at, i + 1, sx, sy) } }
@@ -927,6 +962,67 @@ class CarMapRenderer(
         return PointF(px.x * sx, px.y * sy)
     }
 
+    /** Perspective stroke width at screen vertical position [y] for a route line of [basePx]:
+     *  scales with the user's route-line multiplier, zoom level, camera tilt angle, and screen depth
+     *  (wider in the foreground near the bottom of the tilted view, tapering toward the horizon). */
+    private fun routeStrokeAt(basePx: Float, y: Float): Float {
+        val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+        val zoomScale = ((zoom - 11.5) / 5.5).coerceIn(0.60, 1.20).toFloat()
+        val sinTilt = kotlin.math.sin(Math.toRadians(tilt.coerceIn(0.0, 65.0))).toFloat()
+        val h = height.coerceAtLeast(1).toFloat()
+        val depthScale = (1f + sinTilt * ((y / h) - 0.65f) * 0.90f).coerceIn(0.45f, 1.28f)
+        return (basePx * mult * zoomScale * depthScale).coerceAtLeast(3f)
+    }
+
+    /** Draws [poly] over [range] with perspective width tapering when the camera is tilted, or as a
+     *  single path when flat. */
+    private fun drawPerspectiveRoute(
+        canvas: Canvas,
+        snap: MapSnapshot,
+        poly: List<LatLng>,
+        range: IntRange,
+        sx: Float,
+        sy: Float,
+        paint: Paint,
+        basePx: Float,
+    ) {
+        if (tilt <= 1.0) {
+            paint.strokeWidth = routeStrokeAt(basePx, height * 0.65f)
+            canvas.drawPath(pathOf(snap, poly, range, sx, sy), paint)
+            return
+        }
+        val clip = frontClip
+        var prevPt: PointF? = null
+        var prevLatLng: LatLng? = null
+        var prevIn = false
+        for (i in range) {
+            val cur = poly[i]
+            val curIn = clip?.inFront(cur.lat, cur.lng) != false
+            val before = prevLatLng
+            if (clip != null && before != null && prevIn != curIn) {
+                val t = clip.crossing(before.lat, before.lng, cur.lat, cur.lng)
+                val crossPt = projectRaw(snap, before.lat + (cur.lat - before.lat) * t, before.lng + (cur.lng - before.lng) * t, sx, sy)
+                if (prevIn && prevPt != null && crossPt != null) {
+                    paint.strokeWidth = routeStrokeAt(basePx, (prevPt.y + crossPt.y) * 0.5f)
+                    canvas.drawLine(prevPt.x, prevPt.y, crossPt.x, crossPt.y, paint)
+                }
+                prevPt = if (curIn) crossPt else null
+            }
+            if (curIn) {
+                val pt = projectRaw(snap, cur.lat, cur.lng, sx, sy)
+                if (pt != null && prevPt != null) {
+                    paint.strokeWidth = routeStrokeAt(basePx, (prevPt.y + pt.y) * 0.5f)
+                    canvas.drawLine(prevPt.x, prevPt.y, pt.x, pt.y, paint)
+                }
+                prevPt = pt
+            } else {
+                prevPt = null
+            }
+            prevLatLng = cur
+            prevIn = curIn
+        }
+    }
+
     private fun drawRoute(canvas: Canvas, snap: MapSnapshot, sx: Float, sy: Float) {
         val route = navSession.state.value.route ?: return
         val poly = route.polyline
@@ -943,8 +1039,10 @@ class CarMapRenderer(
         // Draw the WHOLE route ahead in blue first (robust baseline — always shows), gray behind.
         // A paused drive is lavender ahead, as on the phone, with no traffic colors over it.
         val paused = navSession.state.value.paused
-        if (splitI > 0) canvas.drawPath(pathOf(snap, poly, 0..splitI, sx, sy), drivenPaint)
-        if (splitI < poly.lastIndex) canvas.drawPath(pathOf(snap, poly, splitI..poly.lastIndex, sx, sy), if (paused) pausedPaint else trafficPaints[0]!!)
+        if (splitI > 0) drawPerspectiveRoute(canvas, snap, poly, 0..splitI, sx, sy, drivenPaint, 18f)
+        if (splitI < poly.lastIndex) {
+            drawPerspectiveRoute(canvas, snap, poly, splitI..poly.lastIndex, sx, sy, if (paused) pausedPaint else trafficPaints[0]!!, 20f)
+        }
         runCatching { drawDestination(canvas, snap, poly.last(), sx, sy) }
         if (paused) return
 
@@ -963,7 +1061,10 @@ class CarMapRenderer(
             if (lvl == 0) continue // free-flow already blue from the baseline
             val a = project(snap, poly[i], sx, sy) ?: continue
             val b = project(snap, poly[i + 1], sx, sy) ?: continue
-            canvas.drawLine(a.x, a.y, b.x, b.y, trafficPaints[lvl] ?: trafficPaints[0]!!)
+            val p = (trafficPaints[lvl] ?: trafficPaints[0]!!).apply {
+                strokeWidth = routeStrokeAt(20f, (a.y + b.y) * 0.5f)
+            }
+            canvas.drawLine(a.x, a.y, b.x, b.y, p)
         }
     }
 
@@ -1092,6 +1193,7 @@ class CarMapRenderer(
             if (limit <= 0) return
             limitNum.color = if (v > limit + (if (imperial) 3 else 5)) LIMIT_OVER else LIMIT_INK
             val ly = cy
+            val mainLeftEdge: Float
             if (imperial) {
                 val hw = 34f * k; val hh = 44f * k
                 val lx = if (badge) cx - rad - 14f * k - hw else vis.right - 16f - hw
@@ -1101,12 +1203,44 @@ class CarMapRenderer(
                 canvas.drawText("SPEED", lx, ly - 24f * k, limitWord)
                 canvas.drawText("LIMIT", lx, ly - 10f * k, limitWord)
                 canvas.drawText(limit.toString(), lx, ly + 30f * k, limitNum)
+                mainLeftEdge = lx - hw
             } else {
                 val lr = 42f * k
                 val lx = if (badge) cx - rad - 14f * k - lr else vis.right - 16f - lr
                 canvas.drawCircle(lx, ly, lr, limitDisc)
                 canvas.drawCircle(lx, ly, lr, limitRing)
                 canvas.drawText(limit.toString(), lx, ly + 14f * k, limitNum)
+                mainLeftEdge = lx - lr
+            }
+            val upKmh = upcomingLimitKmh
+            val upDist = upcomingLimitDistM
+            if (app.vela.ui.SpeedDisplay.upcomingOn.value && upKmh != null && upDist != null && upDist > 0.0) {
+                val upLimit = (if (imperial) upKmh / 1.609344 else upKmh).roundToInt()
+                if (upLimit > 0 && upLimit != limit) {
+                    val distText = app.vela.ui.formatDistance(upDist)
+                    limitNum.color = LIMIT_INK
+                    limitNum.textSize = 25f * k
+                    val upCy = ly - 8f * k
+                    val upX: Float
+                    if (imperial) {
+                        val uw = 25f * k; val uh = 24f * k
+                        upX = mainLeftEdge - 12f * k - uw
+                        val sign = RectF(upX - uw, upCy - uh, upX + uw, upCy + uh)
+                        limitEdge.strokeWidth = 2.2f * k
+                        canvas.drawRoundRect(sign, 7f * k, 7f * k, limitDisc)
+                        canvas.drawRoundRect(sign, 7f * k, 7f * k, limitEdge)
+                        canvas.drawText(upLimit.toString(), upX, upCy + 9f * k, limitNum)
+                    } else {
+                        val ur = 28f * k
+                        upX = mainLeftEdge - 12f * k - ur
+                        limitRing.strokeWidth = 5f * k
+                        canvas.drawCircle(upX, upCy, ur, limitDisc)
+                        canvas.drawCircle(upX, upCy, ur, limitRing)
+                        canvas.drawText(upLimit.toString(), upX, upCy + 9f * k, limitNum)
+                    }
+                    badgeUnit.textSize = 15f * k
+                    canvas.drawText(distText, upX, ly + 38f * k, badgeUnit)
+                }
             }
         }
     }
