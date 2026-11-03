@@ -98,9 +98,9 @@ object SettingsDump {
         shareFileIntent(
             context, file,
             mime = "application/json",
-            subject = "Vela settings",
-            text = "Vela settings backup.",
-            title = "Export settings",
+            subject = context.getString(app.vela.R.string.settings_backup_title),
+            text = context.getString(app.vela.R.string.settings_backup_title),
+            title = context.getString(app.vela.R.string.settings_export),
         )
     }.getOrNull()
 

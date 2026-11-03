@@ -1484,5 +1484,8 @@
     <string name="settings_takeout_imported_none">Es konnte kein Eintrag in der Liste gefunden werden, daher wurde %1$s nicht erstellt.</string>
     <string name="settings_backup_title">Einstellungen sichern</string>
     <string name="settings_backup_hint">Exportieren Sie Ihre Einstellungen in eine JSON-Datei oder stellen Sie sie auf einem anderen Gerät wieder her.</string>
-    <string name="settings_backup_imported">%1$d Einstellungen wiederhergestellt</string>
+    <plurals name="settings_backup_imported">
+        <item quantity="one">%1$d Einstellung wiederhergestellt</item>
+        <item quantity="other">%1$d Einstellungen wiederhergestellt</item>
+    </plurals>
 </resources>

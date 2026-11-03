@@ -157,7 +157,7 @@ internal fun DiagnosticsSettingsScreen(vm: MapViewModel, onBack: () -> Unit, onC
                     redact = prefs.getBoolean(app.vela.diag.DiagExporter.REDACT_PREF, false)
                     android.widget.Toast.makeText(
                         context,
-                        context.getString(R.string.settings_backup_imported, count),
+                        context.resources.getQuantityString(R.plurals.settings_backup_imported, count, count),
                         android.widget.Toast.LENGTH_LONG,
                     ).show()
                 } else {
