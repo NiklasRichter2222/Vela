@@ -83,12 +83,27 @@ private const val ROUTE_LAYER = "vela-route"
 // every zoom and read THIN at nav zooms next to Google's fat stripe (user 2026-07-15). Values are
 // Google-eyeballed: browse ~unchanged, street-level noticeably wider. Widened again at street zoom
 // with the roads (2026-10-03): at the old 11-17 px it sat inside a real-width street like a pencil line.
-private fun routeWidth(): Expression {
-    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
-    val base = ROUTE_BASE_STOPS.map { it * mult }.toFloatArray()
+private fun scaleRouteStops(stops: FloatArray, mult: Float, tiltDeg: Double = 0.0): FloatArray {
+    val cosTilt = kotlin.math.cos(Math.toRadians(tiltDeg.coerceIn(0.0, 65.0))).toFloat()
+    return FloatArray(stops.size) { i ->
+        if (i % 2 == 0) stops[i]
+        else {
+            val z = stops[i - 1]
+            // Scale width stops (odd indices only; even indices are zoom levels) by the user
+            // multiplier and camera pitch foreshortening so the line follows zoom and tilt perspective.
+            val farFactor = ((18.5f - z) / 6.5f).coerceIn(0.15f, 1f)
+            val pitchScale = 1f - (1f - cosTilt) * (0.42f * farFactor)
+            stops[i] * mult * pitchScale
+        }
+    }
+}
+
+private fun routeWidth(tiltDeg: Double = 0.0, distScale: Float = 1f): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier() * distScale
+    val base = scaleRouteStops(ROUTE_BASE_STOPS, mult, tiltDeg)
     return realWidthCurve(base, ROUTE_REAL_M * mult, ROUTE_CAP_DP * mult)
 }
-private val ROUTE_BASE_STOPS = floatArrayOf(10f, 7f, 14f, 11.2f, 15f, 11.5f, 16f, 11f, 17.5f, 17f, 18.5f, 20.4f)
+private val ROUTE_BASE_STOPS = floatArrayOf(10f, 6.5f, 13f, 8.5f, 14f, 9.8f, 15f, 11.4f, 16f, 13.2f, 17.5f, 17f, 18.5f, 20.4f)
 // The stripe in meters from street zoom in (2026-10-03, "the blue line is thinner than the road"):
 // at the old pixel curve it was half a real-width arterial at nav zoom. 8.5 m (10 m until the owner
 // asked for 15% narrower, same day) sits inside a two-lane street or one carriageway of a divided
@@ -99,8 +114,11 @@ private const val ROUTE_REAL_M = 8.5
 private const val ROUTE_CAP_DP = 32.0
 // Alternates draw nearly as wide as the selected route (2026-10-01, discussion #639): at the old
 // 4 to 8 px they were no wider than the streets under them at city zooms and read as roads.
-private fun altRouteWidth(): Expression = realWidthCurve(ALT_BASE_STOPS, ALT_REAL_M, ALT_CAP_DP)
-private val ALT_BASE_STOPS = floatArrayOf(10f, 6.3f, 14f, 9.8f, 15f, 10.2f, 16f, 10.2f, 17.5f, 15.3f, 18.5f, 18.7f)
+private fun altRouteWidth(tiltDeg: Double = 0.0): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+    return realWidthCurve(scaleRouteStops(ALT_BASE_STOPS, mult, tiltDeg), ALT_REAL_M * mult, ALT_CAP_DP * mult)
+}
+private val ALT_BASE_STOPS = floatArrayOf(10f, 5.8f, 13f, 7.6f, 14f, 8.8f, 15f, 10.2f, 16f, 11.8f, 17.5f, 15.3f, 18.5f, 18.7f)
 private const val ALT_REAL_M = 7.65
 private const val ALT_CAP_DP = 30.0
 // The alternate's outline sits INSIDE its width (the gap is the width less both edges), so an
@@ -109,9 +127,12 @@ private val ALT_ROUTE_EDGE_WIDTH = Expression.interpolate(
     Expression.linear(), Expression.zoom(),
     Expression.stop(10, 1f), Expression.stop(14, 1.5f), Expression.stop(16, 2f),
 )
-private fun altRouteEdgeGap(): Expression = realWidthCurve(ALT_BASE_STOPS, ALT_REAL_M, ALT_CAP_DP) { z ->
-    // the edge's own width each side: 1 dp at z10, 1.5 at z14, 2 from z16 (ALT_ROUTE_EDGE_WIDTH)
-    2 * when { z <= 10 -> 1.0; z <= 14 -> 1.0 + (z - 10) / 8; z <= 16 -> 1.5 + (z - 14) / 4; else -> 2.0 }
+private fun altRouteEdgeGap(tiltDeg: Double = 0.0): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+    return realWidthCurve(scaleRouteStops(ALT_BASE_STOPS, mult, tiltDeg), ALT_REAL_M * mult, ALT_CAP_DP * mult) { z ->
+        // the edge's own width each side: 1 dp at z10, 1.5 at z14, 2 from z16 (ALT_ROUTE_EDGE_WIDTH)
+        2 * when { z <= 10 -> 1.0; z <= 14 -> 1.0 + (z - 10) / 8; z <= 16 -> 1.5 + (z - 14) / 4; else -> 2.0 }
+    }
 }
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
@@ -1336,24 +1357,6 @@ fun VelaMapView(
         }
     }
     var styleRef by remember { mutableStateOf<Style?>(null) }
-    
-    val lineWidthMult = app.vela.ui.NavLineWidth.widthMultiplier.value
-    val lineWidthCustom = app.vela.ui.NavLineWidth.custom.value
-    LaunchedEffect(lineWidthMult, lineWidthCustom) {
-        val width = routeWidth()
-        val outlineWidth = routeOutlineWidth()
-        styleRef?.let { style ->
-            (style.getLayer(ROUTE_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
-            (style.getLayer(ROUTE_TRAFFIC_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
-            (style.getLayer(ROUTE_AHEAD_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
-            (style.getLayer(ROUTE_TAIL_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
-            (style.getLayer(ROUTE_CUT_LAYER) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(width))
-            
-            for (id in arrayOf(ROUTE_LAYER, ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B, ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B, ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B)) {
-                (style.getLayer(id + ROUTE_OUTLINE_SUFFIX) as? org.maplibre.android.style.layers.LineLayer)?.setProperties(org.maplibre.android.style.layers.PropertyFactory.lineWidth(outlineWidth))
-            }
-        }
-    }
     val navPuck = remember { NavPuck() }
     val turnDeclutter = remember { TurnDeclutter() }
     // The cross-street bubbles this map hid because the camera left the car (ids, to put back).
@@ -1369,6 +1372,7 @@ fun VelaMapView(
     val puckOverlayTilt = remember { androidx.compose.runtime.mutableFloatStateOf(0f) } // degrees, for the 3D icons
     val puckOverlayHidLayer = remember { booleanArrayOf(false) } // ME_ARROW_LAYER hidden for the overlay
     fun showPuckOverlay(style: Style, x: Float, y: Float, relBearing: Double, tiltDeg: Double) {
+        syncRouteLineWidths(style, tiltDeg)
         puckOverlayX.floatValue = x
         puckOverlayY.floatValue = y
         puckOverlayRot.floatValue = ((relBearing.toFloat() % 360f) + 360f) % 360f
@@ -2379,6 +2383,9 @@ fun VelaMapView(
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ms-src-") }.forEach { style.removeSource(it) } }
+        androidx.compose.runtime.snapshotFlow { app.vela.ui.NavLineWidth.currentMultiplier() }.collect {
+            syncRouteLineWidths(style, mapRef?.cameraPosition?.tilt ?: 0.0, force = true)
+        }
     }
     val latestFix = rememberUpdatedState(myLocation)
     val latestMs = rememberUpdatedState(maxspeedOverlays)
@@ -4385,11 +4392,13 @@ fun VelaMapView(
                         }
                     }
                     override fun onShove(detector: ShoveGestureDetector) {
+                        val t = map.cameraPosition.tilt
+                        syncRouteLineWidths(map.style, t)
                         if (navModeHolder.value) {
-                            navUserTilt[0] = map.cameraPosition.tilt
+                            navUserTilt[0] = t
                             zoomOverride.value(true)
                         } else {
-                            browseUserTilt[0] = map.cameraPosition.tilt
+                            browseUserTilt[0] = t
                         }
                     }
                     override fun onShoveEnd(detector: ShoveGestureDetector) {
@@ -4592,6 +4601,7 @@ fun VelaMapView(
                 }
                 idleWork[0] = {
                     idleWorkAt[0] = android.os.SystemClock.elapsedRealtime()
+                    syncRouteLineWidths(map.style, map.cameraPosition.tilt)
                     // Keep the VM's "area you're viewing" current so the offline
                     // download can be triggered from Settings, not a map FAB.
                     val b = map.projection.visibleRegion.latLngBounds
@@ -10972,11 +10982,58 @@ private const val ROUTE_OUTLINE_LIGHT = "#0e326a"
 private const val ROUTE_OUTLINE_DARK = "#061a45"
 /** Each side of the outline, dp. */
 private const val ROUTE_OUTLINE_DP = 1.25
-private fun routeOutlineWidth(): Expression {
-    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
-    val base = ROUTE_BASE_STOPS.map { it * mult }.toFloatArray()
+private fun routeOutlineWidth(tiltDeg: Double = 0.0, distScale: Float = 1f): Expression {
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier() * distScale
+    val base = scaleRouteStops(ROUTE_BASE_STOPS, mult, tiltDeg)
     return realWidthCurve(base, ROUTE_REAL_M * mult, ROUTE_CAP_DP * mult) { z ->
         -2.0 * ROUTE_OUTLINE_DP * ((z - 9.0) / 5.0).coerceIn(0.4, 1.0)
+    }
+}
+
+private var lastRouteStyleId = 0
+private var lastRouteMult = -1f
+private var lastRoutePitchBucket = -1
+
+private fun syncRouteLineWidths(style: Style?, tiltDeg: Double, force: Boolean = false) {
+    val s = style ?: return
+    val styleId = System.identityHashCode(s)
+    val mult = app.vela.ui.NavLineWidth.currentMultiplier()
+    val bucket = (tiltDeg / 3.0).toInt().coerceIn(0, 24)
+    if (!force && styleId == lastRouteStyleId && mult == lastRouteMult && bucket == lastRoutePitchBucket) return
+    lastRouteStyleId = styleId
+    lastRouteMult = mult
+    lastRoutePitchBucket = bucket
+    val pitch = bucket * 3.0
+    val sinTilt = kotlin.math.sin(Math.toRadians(pitch.coerceIn(0.0, 65.0))).toFloat()
+    val cutScale = 1f + 0.08f * sinTilt
+    val aheadScale = 1f - 0.14f * sinTilt
+    val tailScale = 1f - 0.30f * sinTilt
+    val baseWidth = routeWidth(pitch, 1f)
+    val cutWidth = routeWidth(pitch, cutScale)
+    val aheadWidth = routeWidth(pitch, aheadScale)
+    val tailWidth = routeWidth(pitch, tailScale)
+    val baseOutline = routeOutlineWidth(pitch, 1f)
+    val cutOutline = routeOutlineWidth(pitch, cutScale)
+    val aheadOutline = routeOutlineWidth(pitch, aheadScale)
+    val tailOutline = routeOutlineWidth(pitch, tailScale)
+    runCatching {
+        (s.getLayer(ROUTE_LAYER) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(baseWidth))
+        (s.getLayer(ROUTE_TRAFFIC_LAYER) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(baseWidth))
+        (s.getLayer(ROUTE_LAYER + ROUTE_OUTLINE_SUFFIX) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(baseOutline))
+        for (id in arrayOf(ROUTE_CUT_LAYER, ROUTE_CUT_LAYER_B)) {
+            (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(cutWidth))
+            (s.getLayer(id + ROUTE_OUTLINE_SUFFIX) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(cutOutline))
+        }
+        for (id in arrayOf(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_LAYER_B)) {
+            (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(aheadWidth))
+            (s.getLayer(id + ROUTE_OUTLINE_SUFFIX) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(aheadOutline))
+        }
+        for (id in arrayOf(ROUTE_TAIL_LAYER, ROUTE_TAIL_LAYER_B)) {
+            (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(tailWidth))
+            (s.getLayer(id + ROUTE_OUTLINE_SUFFIX) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(tailOutline))
+        }
+        (s.getLayer(ALT_ROUTE_LAYER) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(altRouteWidth(pitch)))
+        (s.getLayer(ALT_ROUTE_EDGE_LAYER) as? LineLayer)?.setProperties(PropertyFactory.lineGapWidth(altRouteEdgeGap(pitch)))
     }
 }
 /** Transparent before [p] (the driven part), the outline color after it. */

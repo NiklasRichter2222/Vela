@@ -167,7 +167,9 @@ fun isMapDark(): Boolean {
     return when (AppTheme.mapMode.value) {
         MapThemeMode.LIGHT -> false
         MapThemeMode.DARK -> true
-        MapThemeMode.FOLLOW -> isAppInDarkTheme()
+        MapThemeMode.FOLLOW -> if (AppTheme.mode.value == ThemeMode.SYSTEM) {
+            app.vela.ui.NavSchedule.phoneDarkOverride(isSystemInDarkTheme())
+        } else isAppInDarkTheme()
     }
 }
 

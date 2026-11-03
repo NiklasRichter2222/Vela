@@ -22,3 +22,13 @@
 -keepclassmembers class <1> {
     static <1>$Companion Companion;
 }
+
+# MapScreen and VelaMapView sit right at ART's 64 KB / register verifier limit (CLAUDE.md).
+# Prevent R8 from inlining their split-out private static helpers back into MapScreen or VelaMapView
+# on release builds, which otherwise triggers java.lang.VerifyError when loading the map view.
+-keepclassmembers,allowshrinking,allowobfuscation class app.vela.ui.map.MapScreenKt {
+    private static *** *(...);
+}
+-keepclassmembers,allowshrinking,allowobfuscation class app.vela.ui.map.VelaMapViewKt {
+    private static *** *(...);
+}
