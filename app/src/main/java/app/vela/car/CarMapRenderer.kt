@@ -433,7 +433,7 @@ class CarMapRenderer(
                 val trustCourse = courseOk && (!loc.hasBearingAccuracy() || loc.bearingAccuracyDegrees <= 45f)
                 if (trustCourse) { targetHeading = fixCourse!!; courseKnown = true }
                 else if (!courseKnown || speedMps > STOPPED_MPS) routeHeading(here)?.let { targetHeading = it; courseKnown = true }
-                // Posted speed limit (offline graph's max_speed) while navigating — null off-graph/online.
+                // Posted speed limit (offline graph's max_speed) while navigating - null off-graph/online.
                 // The graph LocationIndex snap runs OFF the main thread (this collector is on
                 // Main.immediate; a synchronous mmap snap every fix would jank the render loop).
                 if ((navigating() || driveScreen) && app.vela.ui.SpeedDisplay.on.value) {

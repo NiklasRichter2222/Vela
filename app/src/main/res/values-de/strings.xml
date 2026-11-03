@@ -1482,4 +1482,7 @@
     <string name="nav_bridge_opening_ahead">Brücke in Sicht: Eröffnung in %1$s geplant</string>
     <string name="settings_project_site_button">Website</string>
     <string name="settings_takeout_imported_none">Es konnte kein Eintrag in der Liste gefunden werden, daher wurde %1$s nicht erstellt.</string>
+    <string name="settings_backup_title">Einstellungen sichern</string>
+    <string name="settings_backup_hint">Exportieren Sie Ihre Einstellungen in eine JSON-Datei oder stellen Sie sie auf einem anderen Gerät wieder her.</string>
+    <string name="settings_backup_imported">%1$d Einstellungen wiederhergestellt</string>
 </resources>
