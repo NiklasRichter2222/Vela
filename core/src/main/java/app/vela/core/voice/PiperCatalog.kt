@@ -94,7 +94,8 @@ object PiperCatalog {
         PiperVoice("fr_FR-upmc-medium", "UPMC", VoiceGender.MULTI, VoiceQuality.MEDIUM, 80, 2, "Deux voix (femme + homme)"),
         // ── Deutsch ──
         PiperVoice("de_DE-thorsten-medium", "Thorsten", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Klare deutsche Referenzstimme", recommended = true),
-        PiperVoice("de_DE-kerstin-low", "Kerstin", VoiceGender.FEMALE, VoiceQuality.LOW, 67, 1, "Weibliche deutsche Stimme"),
+        PiperVoice("de_DE-ramona-low", "Ramona", VoiceGender.FEMALE, VoiceQuality.LOW, 63, 1, "Angenehme, ruhige weibliche Stimme"),
+        PiperVoice("de_DE-kerstin-low", "Kerstin", VoiceGender.FEMALE, VoiceQuality.LOW, 67, 1, "Helle weibliche deutsche Stimme"),
         PiperVoice("de_DE-thorsten_emotional-medium", "Thorsten (Emotional)", VoiceGender.MULTI, VoiceQuality.MEDIUM, 67, 8, "Acht Sprechstile"),
         // ── Español ──
         PiperVoice("es_ES-davefx-medium", "DaveFX", VoiceGender.MALE, VoiceQuality.MEDIUM, 67, 1, "Voz española clara (España)", recommended = true),
