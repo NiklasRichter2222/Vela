@@ -93,10 +93,18 @@ internal fun NavigationSettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_route_bar),
-            checked = routeBar,
+            checked = app.vela.ui.RouteBarPref.on.value,
             onCheckedChange = { routeBar = it; vm.setRouteBar(it) },
             hint = stringResource(R.string.settings_route_bar_hint),
         )
+        if (app.vela.ui.RouteBarPref.on.value) {
+            ToggleRow(
+                label = stringResource(R.string.settings_car_route_bar),
+                checked = app.vela.ui.RouteBarPref.carOn.value,
+                onCheckedChange = { app.vela.ui.RouteBarPref.setCar(context, it) },
+                hint = stringResource(R.string.settings_car_route_bar_hint),
+            )
+        }
         GroupDivider()
         ToggleRow(
             label = stringResource(R.string.settings_nav_north_up),

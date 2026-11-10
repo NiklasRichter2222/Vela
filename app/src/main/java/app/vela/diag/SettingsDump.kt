@@ -176,6 +176,7 @@ object SettingsDump {
         app.vela.ui.MapColors.init(ctx)
         app.vela.ui.MapButtonShape.init(ctx)
         app.vela.ui.TurnArrows.init(ctx)
+        app.vela.ui.RouteBarPref.init(ctx)
         app.vela.ui.CarSpeed.init(ctx)
         app.vela.ui.LiveReviews.init(ctx)
         app.vela.ui.ShowReviews.init(ctx)

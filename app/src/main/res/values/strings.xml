@@ -1349,7 +1349,9 @@
     <string name="settings_turn_arrows">Turn arrows on the route</string>
     <string name="settings_turn_arrows_hint">Short arrows on the route at the turns ahead while you drive.</string>
     <string name="settings_route_bar">Road ahead bar</string>
-    <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras. Portrait only.</string>
+    <string name="settings_route_bar_hint">A strip beside the map showing traffic and what is coming up on the rest of your route. Shows only what Vela actually knows: congestion, lights, stop signs, level crossings, speed bumps and surveillance cameras.</string>
+    <string name="settings_car_route_bar">Road ahead bar on the car screen</string>
+    <string name="settings_car_route_bar_hint">Also show the road ahead bar on Android Auto; off, it shows only on the phone.</string>
     <string name="settings_font">Font</string>
     <string name="settings_font_system">System font</string>
     <string name="settings_font_choose">Choose a font file…</string>
