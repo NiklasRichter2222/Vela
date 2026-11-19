@@ -3081,15 +3081,17 @@ when the feature ids match. Two requests at most.
   computed synchronously per keystroke and are all that shows offline. Contacts load into
   memory once. They dedupe against network rows by name plus coarse location, and by feature id.
 - Every row except a contact has a fill-in arrow.
-- `AddressQuery.parse` reads a leading house number and the street's first word that is not a
-  direction or a street type; `matches` needs both as whole words of a result.
+- `AddressQuery.parse` reads a house number and the street's first word that is not a
+  direction or a street type, in either number-first ("912 Miller Dr") or street-first
+  ("Hauptstraße 42") form; `matches` needs both as whole words of a result.
 - A typed address is searched over at least `ADDRESS_SEARCH_SPAN_M` (40 km). When no matching
   result lies that near the view, the suggest request geocodes it. Matching rows lead, by
   `AddressQuery.score` (a point per typed street word, minus one for a different direction or
   street type: "1451 W Covell Blvd" before "1451 East Covell Boulevard"), then nearest.
-- The on-device geocoder's estimates (ids `addr~`, `OfflineAddressStore.isApproximate`) are
-  dropped when another result has the address. Bracketing house numbers over `INTERP_MAX_GAP_M`
-  (300 m) apart are not blended; the nearer one's point is used.
+- The on-device geocoder's estimates (ids `addr~`, `OfflineAddressStore.isApproximate`, covering
+  interpolated positions, neighbor-house fallbacks and street centerlines) are dropped when
+  Google autocomplete answers or when another search result has the address. Bracketing house
+  numbers over `INTERP_MAX_GAP_M` (300 m) apart are not blended; the nearer one's point is used.
 - A place named by a street line whose address holds only the town shows and copies the two
   joined (`Place.fullAddress`).
 - Typed coordinates drop a pin: `MapLinkParser.parseBareCoordinate` matches the whole string,
@@ -5297,8 +5299,9 @@ the catalog, the ones switched off included; a pick runs that search. The one-bu
   (`navBarRightPx`). The step list's height floor is 64 dp (200 dp in portrait), so it stops
   under the banner.
 - The route bar (`RouteBarStrip` on the phone in portrait and never in PiP; `CarMapRenderer.drawRouteBar`
-  on the left side of `safeArea()` on the car screen when `RouteBarPref.on` and `RouteBarPref.carOn`
-  are on) shows the next
+  along the left edge of the car surface via `CarFraming.routeBarBounds`, anchoring above the
+  ETA card with 38 percent top clearance in full-screen left-column mode so the span label
+  clears the dynamic turn card, when `RouteBarPref.on` and `RouteBarPref.carOn` are on) shows the next
   `RouteBar.WINDOW_M` (5,000 m): scaled to a long trip, nearby marks collapse into one pixel.
   Congestion is painted on the track by level; a light and a stop sign are the map's own
   bitmaps (`trafficLightBitmap`, `stopSignBitmap`) on the track, `MINI` (16 dp) tall; cameras,

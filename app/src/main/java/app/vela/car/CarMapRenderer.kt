@@ -1496,8 +1496,8 @@ class CarMapRenderer(
         }
     }
 
-    /** The road-ahead bar on the left side of [safeArea]: traffic congestion bands, traffic lights
-     *  and stop signs on the track, and round icon badges for cameras, rail crossings and humps. */
+    /** The road-ahead bar along the left edge of the car surface: traffic congestion bands, traffic
+     *  lights and stop signs on the track, and round icon badges for cameras, rail crossings and humps. */
     private fun drawRouteBar(canvas: Canvas) {
         val st = navSession.state.value
         val route = st.route ?: return
@@ -1508,21 +1508,25 @@ class CarMapRenderer(
 
         val vis = safeArea()
         val k = (minOf(width, height) / 720f).coerceIn(0.65f, 1.15f)
-        val topAvail = vis.top + 14f * k
-        val botAvail = vis.bottom - 28f * k
-        val availH = botAvail - topAvail
-        if (availH < 100f * k) return
-
-        val barH = (availH * 0.78f).coerceIn(100f * k, 320f * k)
-        val topY = topAvail + (availH - barH) * 0.5f
-        val botY = topY + barH
 
         val trackColW = 28f * k
         val trackW = 9f * k
         val badgeD = 28f * k
         val badgeR = badgeD * 0.5f
         val miniH = 18f * k
-        val leftX = vis.left + 12f * k
+        // Anchor horizontally to the surface's left edge rather than safeArea().left: in
+        // full-screen Android Auto the turn card (top-left) and ETA card (bottom-left) push
+        // safeArea().left to the right of their column near the middle of the screen, while the
+        // vertical band between them along the left wall is open.
+        val leftX = 12f * k
+        val leftColumn = vis.left > leftX + trackColW + badgeD
+        val (topY, botY) = CarFraming.routeBarBounds(
+            visTop = vis.top.toFloat(),
+            visBottom = vis.bottom.toFloat(),
+            surfaceHeight = height,
+            k = k,
+            leftColumn = leftColumn,
+        ) ?: return
         val trackCx = leftX + trackColW * 0.5f
         val badgeCx = leftX + trackColW + 3f * k + badgeR
 
