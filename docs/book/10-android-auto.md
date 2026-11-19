@@ -140,8 +140,7 @@ over a corner of the visible area. Meters per pixel use MapLibre's 512 px tiles 
 zoom 0). The 256 px figure doubles the offset and drops the arrow off the bottom edge.
 
 The view is heading-up when it follows a moving car: during a drive, and with no route once the
-smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known, the phone's free-drive
-latch. The latch holds through a red light and lets go when the follow ends. Heading-up, the
+smoothed speed passes `DRIVE_LATCH_MPS` (2.5 m/s) with a course known. The latch holds through a red light and lets go when the follow ends. Heading-up, the
 camera turns onto the arrow's heading, tilts to 55 degrees and puts the arrow `PUCK_DOWN` (0.72)
 of the way down, so more road shows ahead. Parked with no route, after a pan, and with the phone's
 "Keep north up" on, the view is north up, flat and centered on the arrow, which still turns with
@@ -269,6 +268,9 @@ session's place list is not allowed on that display and crashes the app there.
   too.
 - Lanes are drawn as a bitmap of arrows, valid lanes white and the rest dimmed, for up to eight
   lanes.
+- The time left is colored by traffic with the route line's thresholds: red when the live time
+  runs more than 40% over the typical time, yellow over 15%, green below. A route without live
+  traffic leaves it the host's default color.
 - Distances round to 10 below 100 ft or m and to 50 above, and switch to miles at 1,000 ft and to
   kilometers at 1,000 m. Zero is allowed so the host can say "now".
 
@@ -283,14 +285,18 @@ is chosen.
 ### Android Automotive
 
 Android Automotive is Android running in the car itself. Vela's templated screens belong to
-Android Auto, and on Automotive the ordinary app runs. Two manifest declarations serve it:
+Android Auto, and on Automotive the ordinary app runs. These manifest declarations serve it:
 
-- Each launcher alias has a second intent filter with `MAIN`, `DEFAULT` and
-  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map panel of
+- A hidden alias pair, `.MapsPanel` and `.MapsPanelGeneric`, answers `MAIN`, `DEFAULT` and
+  `android.intent.category.APP_MAPS`. Automotive starts whatever answers it in the map pane of
   its home screen. The start is an implicit intent, which only matches a filter that declares
-  `DEFAULT`, so the category cannot sit on the launcher filter alone. On a phone the same filter
-  answers "open maps" requests.
-- `MainActivity` and both aliases carry `distractionOptimized`. Without it the car grays Vela out
+  `DEFAULT`. On a phone the same filter answers "open maps" requests. `AppNameAlias` enables the
+  one whose label matches the launcher's name ("call it just Maps").
+- `MainActivity` is `singleTask`, `resizeableActivity` and `allowEmbedded`. Automotive 10 and 11
+  embed the pane with an ActivityView, which starts an app that does not allow embedding full
+  screen instead. Automotive 14 embeds it either way. One task holds the map wherever it was
+  started from: the pane, the app list, a link or a share.
+- `MainActivity` and every alias carry `distractionOptimized`. Without it the car grays Vela out
   of its app list once the car is in gear.
 
 ### The install gate

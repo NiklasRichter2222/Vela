@@ -2,13 +2,15 @@
 
 ## What you see
 
-From street zoom the map shows a blue badge at each transit stop. Tap one and the sheet opens on
+From street zoom the map shows a blue badge at each transit stop: round with a bus at a bus stop,
+a larger rounded square with a train or a subway car at a station. Tap one and the sheet opens on
 its departure board: one row per route and direction, with the route's pill in the agency's
 color, the next departure and a countdown (green when the vehicle is tracked live), and the
 times after it. Tap Stops on a row for the run's stop list: stops already passed are gray, live
 times are green or red, canceled calls are struck through. Tap a stop there to open its board.
 
-Directions in transit mode list trips with their times, lines and walks. Chips set the time
+Directions in transit mode list trips with their times, lines and walks. A trip's card shows
+its first four lines and a count of the rest. Chips set the time
 (Leave now, Depart at, Arrive by, Last available), the vehicles to prefer, and fewer transfers
 or less walking. A picked time is kept while the sheet is swiped down and back, until its time
 has passed or another destination is chosen. Expanding a trip draws it on the map, and it stays
@@ -171,6 +173,11 @@ https://www.google.com/maps/dir/<origin>/<destination>/data=!4m2!4m1!3e3?hl=<lan
 - A line is its text pill, or the file name of an operator's icon when there is no pill
   (`us-ny-mta/2.png` is the 2). An operator's path has a slash. A bare file name such as
   `bus2.png` is the vehicle icon.
+- A pill can have no color. The trip summary lists some lines that way, and the trip card then
+  draws them in the colors their ride leg gives.
+- A pill keeps the agency's own color. A color that would melt into the sheet behind it, such
+  as a white line on the light sheet or the black Northern line on the dark one, gets a thin
+  gray outline (`BadgeContrast`).
 - The vehicle type comes from icon file names only, because a stop name can contain "bus". Where
   a leg has only an operator icon, as in Japan, its path decides: JR and the lettered lines are
   trains, a `metro` or `subway` operator is a subway.
@@ -223,13 +230,26 @@ restart in airplane mode.
 ### Guidance
 
 `TransitNavSheet` takes the bottom half of the screen, with the trip drawn above it and the
-camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at the
-bottom of the sheet on every card; the remaining legs scroll in the room above them.
+camera on the current leg. Each leg is spoken as it begins. Next and Back step by hand, at
+the bottom of the sheet on every card. The current leg and the legs after it scroll between the
+header and those two buttons, which keep their full height when a leg's walk steps or stops are
+open. A leg left open closes on Next.
 
 A leg advances by itself when you reach its end. It must first arm by being more than 90 m from
 that end (`TRANSIT_ARM_M`), then advances within 40 m (`TRANSIT_ARRIVE_M`). Arming keeps a
 transfer hub, where two leg ends are close together, from running through several legs at once.
 Unlike a drive ([chapter 4](04-navigation.md)) there is no off-route detection and no rerouting.
+
+Guidance runs a foreground service of its own, `TransitGuideService` (issue #880), so it keeps
+its fixes and its voice with the screen off. Its notification, on the drive's silent channel,
+carries the leg in hand: a ride as "Take 42A towards ..." over "Get off at ... · 4 stops left",
+a walk as "Walk 9 min" over the stop it leads to, with an End button. The stops left are counted
+from the stop nearest the phone along the leg's stop list (`TransitProgress.stopsLeft`). At the
+stop before the rider's (or within `ALERT_M`, 600 m, of it when the leg has no stop list) a
+heads-up says "Get off at the next stop" once per leg and the voice says it too
+(`TransitProgress.nextIsYours`). On arrival the ongoing card gives way to a dismissable "You have
+arrived", which Done in the app clears. The view model writes the card (`TransitGuide.notice`);
+a start the system refuses leaves guidance working in the app, as before.
 
 ### Offline copies
 

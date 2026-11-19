@@ -310,6 +310,7 @@
     <string name="settings_import_unreadable">That file could not be opened.</string>
     <string name="settings_import_wrong_format">No places found in that file. Vela reads its own exports, and GPX, KML or GeoJSON files saved from other map apps.</string>
     <string name="settings_import_wrong_format_named">No places found in that %1$s file.</string> <!-- format -->
+    <string name="settings_lists_import_is_places">That file holds saved places, not lists. Import it from Settings &gt; Saved places &gt; Import.</string>
     <string name="settings_import_no_picker">No file picker is available on this device, so a file cannot be chosen.</string>
     <string name="settings_no_saved_places">No saved places yet</string>
     <string name="settings_export">Export</string>
@@ -347,6 +348,10 @@
     <string name="settings_poi_size_default">Default</string>
     <string name="settings_poi_size_large">Large</string>
     <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
+    <string name="settings_place_names">Place names</string>
+    <string name="settings_place_names_more">More</string>
+    <string name="settings_place_names_most">Most</string>
+    <string name="settings_place_names_hint">More and Most show the names and icons of shops, schools and other places when zoomed further out. A busy area gets crowded, and the map can move less smoothly there.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="nav_edit_route">Edit route</string>
@@ -446,6 +451,8 @@
     <string name="settings_trip_batch_left_out">Left out because they are shorter than the trim distance: %1$d. A smaller distance may keep them.</string> <!-- format -->
     <string name="settings_trip_batch_none">Every selected trip is shorter than the trim distance, so there is nothing left to share. Try a smaller one.</string>
     <string name="settings_trip_batch_confirm">Share zip</string>
+    <string name="settings_trip_batch_share_full">Share full traces</string>
+    <string name="settings_trip_batch_saved">Saved the full traces</string>
     <string name="settings_name_trips">Name each trip when it is saved</string>
     <string name="settings_name_trips_hint">After a recorded drive ends, Vela asks what to call it. Off by default; you can always rename a trip later in the list below.</string>
     <string name="trip_name_prompt_title">Name this drive</string>
@@ -918,6 +925,19 @@
     <string name="transit_nav_from">from %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
+    <string name="welcome_trips_title">Your drives</string>
+    <string name="welcome_trips_intro">Kept on this phone so you can replay a drive or attach one to a bug report. Nothing leaves the phone unless you share it.</string>
+    <string name="welcome_trips_save">Save my drives on this phone</string>
+    <string name="welcome_trips_clear">Delete drives after 30 days</string>
+    <string name="settings_trip_auto_clear">Delete drives after 30 days</string>
+    <string name="settings_trip_auto_clear_hint">Saved drives older than 30 days are deleted on their own.</string>
+    <string name="transit_notice_next_is_yours">Get off at the next stop: %1$s</string> <!-- format -->
+    <string name="transit_notice_to">To %1$s</string> <!-- format -->
+    <string name="transit_notice_to_destination">To your destination</string>
+    <plurals name="transit_notice_stops_left">
+        <item quantity="one">%d stop left</item>
+        <item quantity="other">%d stops left</item>
+    </plurals>
     <string name="place_last_available">Last available</string>
     <string name="place_transit_prefer">Prefer</string>
     <string name="transit_min_late">%1$d min late</string>

@@ -307,6 +307,17 @@ class VoiceGuide @Inject constructor(
         // language it has no voice for.
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
+        // Labeled as navigation guidance, as the focus request and Vela's own voice are (issue
+        // #949). Unlabeled, the engine played as music: a car or a projection app routing audio by
+        // usage mixed the prompts into the music instead of ducking it.
+        runCatching {
+            t.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+        }
         systemReady = true
         systemInitFailed = false
         lastSystemLang = null // force setLanguage on the first utterance
@@ -325,6 +336,16 @@ class VoiceGuide @Inject constructor(
         pending.clear()
         last?.let { (text, interrupt) -> speakNow(text, interrupt) }
     }
+
+    /** The engine's default voice, which is the one chosen in its own settings, when it speaks
+     *  language [t], works offline and is installed; else null. */
+    private fun ownVoice(t: TextToSpeech, lang: String): android.speech.tts.Voice? = runCatching {
+        t.defaultVoice?.takeIf {
+            it.locale.language == Locale.forLanguageTag(lang).language &&
+                !it.isNetworkConnectionRequired &&
+                it.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true
+        }
+    }.getOrNull()
 
     /** Pick the highest-quality voice for [lang] that works offline — engines
      *  often default to a low-quality or download-required voice; this lifts
@@ -377,6 +398,10 @@ class VoiceGuide @Inject constructor(
      *  this so a shared drive shows what was said, verbatim, at what time. Set by `:app`. */
     var onSpoken: ((String) -> Unit)? = null
 
+    /** Fired instead of [onSpoken] for a line guidance would have said with the voice muted or on
+     *  alerts only, so a trip still shows what the drive meant to say. */
+    var onMuted: ((String) -> Unit)? = null
+
     /** Fired beside [onSpoken] on every line guidance actually speaks. The nav service taps this
      *  to pop a visible heads-up of the turn while the app is backgrounded - a separate slot so
      *  it can't clobber the trip recorder's hook (each is set by a different `:app` owner). */
@@ -393,7 +418,10 @@ class VoiceGuide @Inject constructor(
     private val OPENER_MAX_WAIT_MS = 2500L // cap the nav-start opener's wait for its romanized road name
 
     fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
-        if (muted && !ignoreMute) return
+        if (muted && !ignoreMute) {
+            runCatching { onMuted?.invoke(text) }
+            return
+        }
         // The line itself, only when a developer asks (adb shell setprop log.tag.VelaSpeak DEBUG):
         // it names stops and streets, which no log carries otherwise.
         runCatching { if (android.util.Log.isLoggable("VelaSpeak", android.util.Log.DEBUG)) android.util.Log.d("VelaSpeak", text) }
@@ -481,13 +509,21 @@ class VoiceGuide @Inject constructor(
             return
         }
         if (t != lastSystemLang) {
-            val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
-            if (avail < TextToSpeech.LANG_AVAILABLE) {
-                working = false
-                langUnavailable?.invoke(t) // "download a <language> voice" — don't mangle it through the wrong one
-                return
+            // The voice picked in the engine's own settings, when it speaks [t]: kept as it is
+            // (issue #944). Choosing the best-rated voice for the language instead spoke with a
+            // voice the user had not picked in engines with several per language.
+            val own = ownVoice(engine, t)
+            if (own != null) {
+                runCatching { engine.voice = own }
+            } else {
+                val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
+                if (avail < TextToSpeech.LANG_AVAILABLE) {
+                    working = false
+                    langUnavailable?.invoke(t) // "download a <language> voice": never read it with the wrong one
+                    return
+                }
+                selectBestVoice(engine, Locale(t))
             }
-            selectBestVoice(engine, Locale(t))
             engine.setSpeechRate(speechRate)
             engine.setPitch(1.0f)
             lastSystemLang = t

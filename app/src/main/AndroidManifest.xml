@@ -90,11 +90,17 @@
              rename an app per COMPONENT, so the "call it just Maps" option (issue #226) swaps which
              alias is enabled via PackageManager. MainActivity keeps every functional intent filter
              (geo:, share, maps links) so deep links never depend on the cosmetic choice. NB the one-time
-             cost of moving the filter: pinned home-screen icons re-pin after this update. -->
+             cost of moving the filter: pinned home-screen icons re-pin after this update.
+             singleTask keeps one map: a link or a share from another app reaches the running map
+             instead of stacking a second one in the sender's task. allowEmbedded and
+             resizeableActivity let Android Automotive 10 and 11 embed Vela in the home screen's map
+             pane (ActivityView); without them the car starts it full screen. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:allowEmbedded="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Vela">
@@ -166,16 +172,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.APP_MAPS" />
-            </intent-filter>
         </activity-alias>
 
         <activity-alias
@@ -192,11 +188,34 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "The maps app" to the system (issue #683): Android Automotive starts whatever
-                 answers MAIN + APP_MAPS in its map panel, and "open maps" requests resolve by it
-                 on a phone. A filter of its own WITH the DEFAULT category: the car launcher starts
-                 it by an implicit intent, which only matches a filter that declares DEFAULT (with
-                 the category on the launcher filter alone the start came back "not resolved"). -->
+        </activity-alias>
+
+        <!-- "The maps app" to the system: Android Automotive starts whatever answers MAIN +
+             DEFAULT + APP_MAPS in the map pane of its home screen, and "open maps" requests
+             resolve by it on a phone. The start is an implicit intent, which only matches a filter
+             that declares DEFAULT. These entries are kept off the launcher icons, and
+             AppNameAlias switches the pair with the "call it just Maps" name. -->
+        <activity-alias
+            android:name=".MapsPanel"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:enabled="true">
+            <meta-data android:name="distractionOptimized" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.APP_MAPS" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MapsPanelGeneric"
+            android:targetActivity=".MainActivity"
+            android:label="@string/app_name_generic"
+            android:exported="true"
+            android:enabled="false">
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -206,6 +225,13 @@
 
         <service
             android:name=".service.NavigationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Transit guidance with the phone in a pocket (issue #880): the leg in hand in the shade,
+             a heads-up at the stop before yours, and the fixes that advance the legs. -->
+        <service
+            android:name=".service.TransitGuideService"
             android:exported="false"
             android:foregroundServiceType="location" />
 

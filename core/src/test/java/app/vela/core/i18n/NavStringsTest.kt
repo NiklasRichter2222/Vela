@@ -105,6 +105,11 @@ class NavStringsTest {
             "Use the right 2 lanes to take exit 172 toward Sacramento",
             EnNavStrings.useLanesToDo(g.side, g.count, "Take exit 172 toward Sacramento"),
         )
+        // A ramp on the side the lanes name does not say the side twice.
+        assertEquals(
+            "Use the right 2 lanes to take the ramp toward CA 99 North",
+            EnNavStrings.useLanesToDo(g.side, g.count, "Take the ramp on the right toward CA 99 North"),
+        )
         // Other languages fall back to a safe two-sentence, lanes-first form.
         assertEquals(
             "Empruntez les 2 voies de droite. Prenez la sortie 172",
@@ -119,6 +124,9 @@ class NavStringsTest {
     @Test fun `expandForSpeech is English-only opt-in`() {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
         assertEquals("one twenty eighth Street", EnNavStrings.expandForSpeech("128th St"))
+        // Google's exit signs.
+        assertEquals("take the 147 exit, toward Bush Intercontinental Airport, Denver International Airport",
+            EnNavStrings.expandForSpeech("Take exit 147 toward Bush Intercont'l Arpt, Denver Int'l Airport"))
         // French leaves the text — including a road abbreviation — untouched (interface default identity).
         assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
         // Other languages also leave text untouched (they use the interface default).

@@ -70,7 +70,19 @@ Where Google's line leaves the open route, the steps come from the first of thes
 2. The map tiles. `LineNamer` in strict mode takes the turns from the bends of Google's line. A
    turn gets a street's name only when the street is within `STRICT_MAX_OFF_M` (12 m), no
    street with another name is about as close, and the line stays on it for `STRICT_RUN_M`
-   (60 m).
+   (60 m). Highway steps come from the link roads (`ramp=1` in the tiles' `transportation`
+   layer), each said once, the way Organic Maps and OsmAnd read junctions: the exit where the
+   line leaves the highway, even with no bend there, nothing along the ramp or where it
+   merges, and a plain turn where it ends at a street. A turn straight onto a highway at an
+   intersection says "Turn left onto" it, and a gentle bend on a highway with no road leaving
+   it says nothing. The tiles carry no exit numbers or signs, so an exit takes them from
+   Google's own exit at the same place ("Take exit 4A toward I-5 N: Redding"), along with the
+   side it leaves on. Google's reply has every step at its exact point, even though its short
+   step list does not. Where the tiles miss an exit, Google's is said. A turn the tiles leave
+   bare, such as the short middle of a jog through a street grid, takes the street of Google's
+   own step at the same corner when that step turns the same way, and a bare slight bend on
+   what the tiles read as one street, with no step of Google's near it, is a curve and is not
+   said.
 3. The bends alone: "Turn right".
 
 Tiles come second because, on 90 test routes, naming from the tiles alone put a wrong name on
@@ -109,6 +121,10 @@ matched road pieces (`trace_attributes`) and checks every turn against them (`ch
 - Valhalla counts staying on a numbered route as going straight, even through a corner. Where
   the matched line turns 60 degrees or more with no step near and the street name changes
   there, Vela adds the turn.
+- OSRM reads a rename's direction at the node, so a street that turns a corner into another
+  came out "straight" and was not said. A rename where its line turns 60 degrees or more within
+  10 m is said as a turn. A nameless slip lane followed by "straight onto" a street is one turn
+  onto that street, as Google says it.
 - At a roundabout, Valhalla's enter step carries the ring's own name. Vela says the street you
   leave by.
 - A turn onto the street the driver was just told is said without the name. What counts is the
@@ -180,9 +196,18 @@ route is refused if a point moved more than `VIA_SNAP_MAX_M` (40 m), if it ends 
 500 m from the destination, if it is longer than Google's route by more than 5% plus 400 m, or
 if it has a spur: an out-and-back with a turn on it, which a point snapped onto a side street
 produces. When the snap is refused, Google's line is kept and `LineNamer` names its turns from
-the tiles (`GOOGLE_LINE_NAMED`, no lanes or sign text). When that fails too, the route is
+the tiles (`GOOGLE_LINE_NAMED`, no lanes; exit numbers and signs from Google's exits). When that fails too, the route is
 driven on Google's short steps. The route keeps the Google time the list showed, so picking it
 cannot move the row.
+
+### A place as the destination
+
+When the destination is a Google place, Google is asked for the place (its name, address and
+feature id), not only its point, the way its own web page asks. The route then ends at the
+place's entrance point. Asked for the bare point, Google ends on the road nearest the pin, which
+for a large store can be the road behind the building. Reroutes and rechecks to the same point
+ask the same way (`DestinationPlaces`). A route made by snapping the open router to Google's
+course ends where Google's line ends; its last leg used to run to the pin.
 
 ### Stops
 
@@ -227,8 +252,10 @@ classes and a request carrying `exclude=` is rejected whole, so `OSRM_SUPPORTS_E
 false and the parameter is never sent.
 
 When Google does not answer and a region is downloaded, the on-phone router computes the
-avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). If nothing
-honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
+avoiding route from the road attributes, within `AVOID_ONDEVICE_TIMEOUT_MS` (4 s). With no region,
+or none in time, the other open service, Valhalla, is asked for a car route told to keep off
+them. Its options are preferences, so its route counts only when its own summary says it used
+none of what was avoided. If nothing honored the avoid, the routes are tagged `avoidNotHonored`, and the chooser shows "may still
 use tolls, highways, or ferries" when every route carries the tag.
 
 ### Times and traffic colors
@@ -269,9 +296,31 @@ missed turn says "make a U-turn", and so does the next one. A planning fetch sen
 Setting a route aside has a price limit (`RouteGeometry.forwardChoice`). A forward Google route
 is taken only when it is within 3 minutes, or 8 percent, of the best one. With none, the open
 router's own route is used when it is that close to the best route's time without traffic: it
-was asked with the heading and usually goes round the block. When going on costs more than that
+was asked with the heading and usually goes round the block. It runs on the set-aside route's
+clock and traffic, so its arrival time is Google's from the first answer instead of the open
+router's fast one until the next recheck. When going on costs more than that
 either way, the best route stands and the car is told to turn around. Without the limit a
 forward alternate 20 minutes longer was taken over the best route.
+
+A route that backs up counts as setting off against the car too: one whose first 60 m reach
+more than 12 m behind where it starts, as a U-turn to the street just passed does before it
+turns up that street (`RouteGeometry.startsBehind`).
+
+Starting the right way is not enough. A route can set off the car's way, go round a small block
+and come back along the road just driven, to the turn the car missed. The reroute passes the
+car's own track, the last 300 m it drove, and a route that runs back along it in its first
+400 m turns the car round as surely as a U-turn (`RouteGeometry.goesBack`). The track starts
+where the car last turned round, so after a U-turn of its own the way on back down the road is
+not read as turning round again. Both routers'
+routes are tested, the open router's alternates included (`forwardPick`), with the same price
+limit, and ranked: going on first, then turning round further on (round a block, or back from
+the next exit), then turning round where the car is. A route that still turns a moving car
+round where it is, when nothing better was offered at any price, is not shown: Vela asks again
+3 s later, twice at most, and then takes what it has. When going on was offered and cost too
+much more, the turn-round is taken at once. A car stopped at a light keeps the course it had
+while moving, so a reroute from the stop is not free to send it back the way it came, unless its
+track since shows it crawled round a corner or turned in the road. When the open router does not
+answer, Google's routes, or the phone's, are weighed the same way among themselves.
 
 ### Walking
 
@@ -286,6 +335,9 @@ the line must be named or the route is dropped, and a road bridge's name never l
 street under it. The line is never snapped through the foot router. Points on Google's line
 land on the far sidewalk or a flyover deck, and the snapped route doubled back at each one (20
 to 110% longer on Davis, Sacramento and Dhaka walks).
+
+A walk or a ride that crosses water on a ferry has a "Take the ferry" step where it boards. The
+open routers include passenger ferries, which run on their own timetable.
 
 ### Bikes
 

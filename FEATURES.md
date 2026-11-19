@@ -11,6 +11,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   Google, or Both.
 - "Show places", "Parks, schools and civic places", "Transit stops" and "Place icon size" control
   what is drawn.
+- "Place names" (Default, More, Most) brings place names and icons in one or two zoom levels
+  sooner.
 - Tap a place, a house number or a building to open it. Long-press to drop a pin.
 - Tilt the map for 3D buildings. "Tilt with two fingers" and "3D buildings" turn those off.
 - Pinch and turn in one gesture. A small turn goes back to north when you let go.
@@ -119,7 +121,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 ## Navigation
 
 - A turn banner with arrow, distance, road name, highway shields, exit numbers and lanes. Swipe it
-  to look ahead. Street words are abbreviated on screen ("Court St", "NE 8th St"); the voice says
+  to look ahead. Street words are abbreviated on screen ("Court St", "W Covell Blvd"); the voice says
   them in full.
 - With a large display size or large text the turn card stays within a third of the screen, the
   arrow stays clear of the bottom bar, and the map zooms out to keep the road ahead in view.
@@ -131,6 +133,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - Two turns a block apart are said together: "Turn right onto Elm Street, then turn left onto Oak
   Avenue". When there is little time before the second turn, the street names are left out so
   the line is not cut off.
+- On the freeway each exit or fork is said twice: a quarter mile out and at the exit. A merge is
+  said once.
+- At a freeway fork or ramp the voice names the road it heads for ("Keep slight right toward US
+  50 East"), and a fork that keeps you on your road says "Keep left to stay on I 80 West".
 - A route that starts without some of its street names, because the naming services were slow,
   gets them during the drive, usually within 20 seconds.
 - "How much the voice says": Everything, Brief (each turn once, no street name), or Highway exits
@@ -168,7 +174,8 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 - A notification, a picture-in-picture mini map and, on Android 16, a live update carry the drive in
   the background.
 - "Turn card in the mini map" sets the mini map's layout.
-- If the app is closed mid-drive, the next launch offers to resume.
+- If the app is closed mid-drive, the next launch offers to resume, and the resumed drive records
+  into the same trip.
 - In a tunnel Vela keeps estimating your position.
 - A stop is announced as it comes up ("then Davis Food Co-op will be on your right", "turn left into
   the parking lot" where the map shows one) and when you reach it. Arrival is announced with the
@@ -189,7 +196,9 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   or less walking.
 - Expand a trip for each leg's stops, times, alerts and fare, drawn on the map along its real track.
 - A walk leg expands to turn-by-turn walking directions.
-- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end.
+- Start a trip for a leg-by-leg guide that speaks each leg and moves on at its end. It keeps going
+  in a pocket, with the leg and the stops left in a notification and a heads-up at the stop before
+  yours.
 - Tap a stop on the map for its departure board, with a countdown, a Live mark and each run's stop
   list.
 - Offline, a stop shows the last board you saw there.
@@ -338,6 +347,7 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
   the phone's.
 - Traffic lights and stop signs on the car map are the phone's glyphs, sized to the screen.
 - Camera, speeding and closing-soon alerts appear as car toasts.
+- The time left on the car is green, yellow or red by traffic, like the route line.
 - The car's settings cover spoken directions, avoiding tolls, highways and ferries, and the
   traffic layer.
 - The phone and the car share one drive. A trip started on either shows on both.
@@ -367,8 +377,10 @@ What Vela Maps does today, one line per feature. How each one works is in [SPEC.
 
 ## Recorded trips and diagnostics
 
-- "Save my trips (for replay)" records drives on the phone, off by default. Replay, rename or delete
-  them. "Select trips", or a long press on one, picks several to share or delete together.
+- "Save my trips (for replay)" records drives on the phone. A new install turns it on from its
+  first screens, with "Delete drives after 30 days" on too; older installs keep their setting.
+  Replay, rename or delete them. "Select trips", or a long press on one, picks several to share
+  or delete together.
 - Sharing a trip first trims the points near its start, its end, Home and Work. The notes on what
   the drive decided and ran on are kept for the whole drive; they hold no place.
 - Diagnostics, off by default, keeps a local log that "Export debug session" shares where you

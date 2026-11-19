@@ -25,6 +25,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -145,6 +146,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -1248,8 +1250,8 @@ fun PlaceSheet(
                 }
             }
 
-            // A permanently-closed POI already says so in red above — don't also
-            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            // A closed POI, for good or for now, already says so in red above, so "Hours not
+            // listed" is not said beneath it: Google sends no hours for either.
             // The list owner's personal note, carried over from an imported Google Maps list
             // ("this restaurant's fish is better than its chicken") — the part of a shared
             // list Google itself throws away on export, kept front and center here.
@@ -1277,7 +1279,7 @@ fun PlaceSheet(
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop && !resolving) {
+            } else if (place.category != null && !place.permanentlyClosed && !place.temporarilyClosed && !isTransitStop && !resolving) {
                 // Not while the listing is still being looked up: the map's data lacking hours
                 // says nothing about Google's, which usually has them.
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
@@ -2472,30 +2474,30 @@ fun TransitNavSheet(
                 IconButton(onClick = onEnd) { Icon(Sym.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             Spacer(Modifier.height(8.dp))
-            // Current leg, large.
-            if (step != null && !nav.arrived) {
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
-                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
-            } else {
-                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+            // The legs scroll in all the room between the header and the buttons, so Back and Next
+            // stay at the bottom on every card (issue #831) and a leg with its walk steps or stops
+            // open never squeezes them (issue #853).
+            val scroll = rememberScrollState()
+            LaunchedEffect(nav.stepIndex) { scroll.scrollTo(0) }
+            Column(Modifier.weight(1f).verticalScroll(scroll)) {
+                // Current leg, large. Keyed on the step, so a leg left open closes on Next.
+                if (step != null && !nav.arrived) key(nav.stepIndex) {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
+                    ) { TransitStepRow(step, ink, dim, onWalkDirections) }
+                } else {
+                    Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+                }
+                Spacer(Modifier.height(16.dp))
+                // Remaining legs as a compact timeline.
+                val remaining = itin.steps.drop(nav.stepIndex + 1)
+                if (remaining.isNotEmpty()) {
+                    Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
+                    Spacer(Modifier.height(6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            // Remaining legs as a compact timeline.
-            val remaining = itin.steps.drop(nav.stepIndex + 1)
-            if (remaining.isNotEmpty()) {
-                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
-                Spacer(Modifier.height(6.dp))
-                // The list takes all the room above the buttons and scrolls inside it. It used to
-                // share that room with a spacer, and a short list left the buttons floating on the
-                // one card whose list was short (issue #831).
-                Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
+            Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
@@ -2623,6 +2625,8 @@ private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color
                     )
                     LinePill(line)
                 }
+                // More rides than fit: say how many, so the card never reads as the whole trip.
+                if (t.lines.size > 4) Text("+${t.lines.size - 4}", style = MaterialTheme.typography.labelMedium, color = dim)
             }
         }
         val sub = listOfNotNull(t.frequencyText?.let { stringResource(R.string.place_every, it) }, t.distanceText, t.agency).joinToString("  ·  ")
@@ -3177,16 +3181,21 @@ private fun modeIcon(mode: TransitMode) = when (mode) {
 }
 
 /** A color-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no color is supplied. */
+ *  transit pills; falls back to the theme primary when no color is supplied. A color that would
+ *  melt into the sheet (a white line on the light sheet) keeps its fill and gets a thin outline
+ *  ([BadgeContrast]). */
 @Composable
 private fun LinePill(line: TransitLine) {
     val fallback = MaterialTheme.colorScheme.primary
     val bg = parseHexColor(line.colorHex) ?: fallback
     val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
+    val dark = isAppInDarkTheme()
+    val shape = RoundedCornerShape(6.dp)
     Row(
         Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(shape)
             .background(bg)
+            .then(if (BadgeContrast.needsOutline(bg, dark)) Modifier.border(1.dp, app.vela.ui.SheetPalette.dim(dark).copy(alpha = 0.7f), shape) else Modifier)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

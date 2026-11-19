@@ -257,6 +257,132 @@ Small items, one pull request each.
 Each of these passed its unit tests and has not been seen or heard where it matters. Take one
 off the list when it has been.
 
+- Highway steps on a route named from the tiles (`LineNamer`) come from the link roads: a turn
+  straight onto or off a highway at an intersection says "Turn left onto", an exit is said once
+  where the line leaves the highway and the end of the ramp is a plain turn, curves along a ramp
+  or a highway say nothing, and two turns onto one street within 50 m are one. Checked with the
+  tile step census on the 39 captured Google lines and the Davis I 80 route against Google
+  Maps' steps; not yet heard on a drive.
+- Exits on those routes take Google's exit number, signs and side ("Take exit 4A toward I-5 N:
+  Redding"), and an exit the tiles miss is said where Google has it. Checked on 7 trips kept
+  with Google's replies (16 exits, all said once); not yet heard on a drive, and the phone's
+  reply has not been looked at for the same step fields (only the Mac's).
+
+- Unnamed car parks show their P under the open places layer and Google's dots (issue #935,
+  `vela-osm-parking`): seen on the 4a at the reporter's lot; frame rate measured in Shinjuku.
+  Not looked at in a city with many unnamed lots at z15 to z16, where clutter would show.
+- Temporarily closed places (issue #930): the "Reopen this place" entry in a place's edit menu
+  marks the closure when Google sends no status text. Checked on the 4a against open San
+  Francisco listings (no kind 3) and a permanently closed Davis one (kind 3). No temporarily
+  closed listing was at hand to see its sheet.
+- A phone's own text-to-speech engine (issues #949, #944): its prompts are labeled navigation
+  guidance, and it keeps the voice picked in its own settings when that voice speaks the
+  directions' language. Neither test phone nor the emulator has a system engine, so neither has
+  been heard yet: check with `adb shell dumpsys audio` (the player's usage) and an engine with
+  several voices a language.
+- Fewer voice lines on the freeway: any maneuver at 50 mph or more, and an exit, fork, keep,
+  U-turn or on-ramp turn from 34 mph, gets one line about 15 s out and one at the turn. A merge
+  is said once, often as the "then" of the step before it, and a "then" carries the lanes. A
+  recorded drive replayed through the engine went from 24 lines to 17, and an exit, the fork on
+  its ramp and the merge from eight to four. A Davis mock drive on the 4a said an I 80 on-ramp,
+  its merge, exit 75 and the turn after it as expected. Not yet heard on a real drive: whether a
+  quarter mile is enough warning to change lanes.
+
+- A roundabout is said on its approach and only buzzes at its entry, unless the entry line
+  carries the next step: replayed on a recorded drive, the roundabout got its two approach
+  lines and none at the entry. Not heard on a drive, nor through roundabouts in a row.
+- A fork said as the "then" of the fork 45 m before it is not said again at its own turn
+  (`CHAIN_REPEAT_S`): unit-tested at 25 m/s. The trip replay passes no speed, so it cannot show
+  this. Not heard on a freeway interchange.
+- A reroute whose first step is a ramp, exit or fork the car cannot reach in 5 s asks again past
+  it (`PLACED_STEPS`): unit-tested. Not seen on a freeway reroute.
+- The line at a ramp, fork or keep names the first route on its sign, and a fork toward the
+  road the car is on says "to stay on" it (`repeatWithRoute`, `stayOnForks`): unit-tested and
+  replayed on a recorded interchange. Not heard on a drive; "stay on" not seen on a real route.
+- A reroute turns down routes that turn the car round (back along its own track, backing up,
+  or set off against it) for one that goes on and costs little more, then for one that turns
+  round further on over one that turns round where the car is, from both routers or from one
+  alone when the open router is out; asks again 3 s later when the route turns a moving car
+  round where it is and nothing better was offered; keeps the last course at a stop unless the
+  track turned off it; and waits 3 s, not 10, after a route the car never joined. Unit-tested,
+  and re-driven on a recorded Davis drive with two missed turns on the 4a: the old code rerouted
+  four times and sat 30 s on a turn-around; the new code rerouted once per missed turn, set
+  Google's turn-around aside both times, and its route matched the road driven. The track
+  starts at the car's last turn-round: on a mock drive on a divided Davis road, the reroute
+  after the car's own U-turn took its route at once, where the uncut track held it 7 s. With the
+  open router off (`openRouterDown`) on the Davis mock drive, Google's alternate that went on
+  led at the first missed turn, and at the second, where Google's one route turned the car
+  round, the re-ask fired and its answer went on (adopted after 4.2 s, no reroute after). Not
+  seen on a real drive. The held-course turn check is unit-tested only.
+- A recorded drive keeps the nav engine's inputs (`N`) and every router answer (`RC`), and a
+  replay feeds those inputs back: checked on the 4a, where the replay went off route and
+  swapped routes in the drive's order. Also on the 4a with a Davis mock drive: a seek to three
+  quarters ran both reroutes silently and played on from 3:00 of 3:54 on the drive's last
+  route; two 10 s GPS gaps left 10 dead-reckoned points, and the replay went through them with
+  no false off-route; a trip recorded before `N` lines replayed its six reroutes in order.
+  Re-drive (`replayLive`) used on the 4a only. Not tried on a real drive's file.
+- A missed exit on I 80 at Davis (mock drive on the 4a): every answer went on to the next exit,
+  none was flagged as turning round, and the reroute was adopted in 1.2 s; missing the next
+  exit too, the second in 1.0 s.
+
+- Data job fixes: the camera bake asks for CSV and tries again, the maxspeed bake skips a
+  region with no tagged roads, a failed velamaps.org deploy no longer stops GitHub Pages, and
+  the baseline profile run warns instead of failing when it may not open a pull request. Each
+  ran locally against the live servers and files. They are on main and none has run on GitHub
+  yet.
+- The car's time left is colored by traffic (#928): seen on a real Android Auto connection on a
+  debug build. Not seen on a release build, on the desktop head unit or in heavy traffic.
+- Android Automotive 10 and 11 keep Vela in the home screen's map pane (#879): on the
+  Automotive 14 emulator the pane, the app list and Home behave as before, with one task, and on
+  a 4a links and shares reach the running map and the "maps app" entry follows the "Maps" name.
+  Not seen on an Automotive 10 or 11 car, which is what it is for. A share from inside another
+  app now lands in Vela's own task; that was not tried by hand.
+- A ferry leg on a walk or a ride says "Take the ferry" (#824): seen in the step list on a 4a,
+  walk and bike. Not heard on a real crossing. The phrase in the 17 other languages has not been
+  read by a native speaker, and the on-device router's ferry legs are not phrased this way.
+
+- A line waits to play until it can play through (`StreamStart`, #795): on a 4a with a
+  high-quality voice at normal speed it starts as before. Not tried on a slow phone or at a
+  raised voice speed, which is where the mid-line pauses were reported.
+- The voice engine's own threads take the worker's priority (#795): a test line under eight
+  busy loops on a 4a rendered in 11 to 15 s instead of 25 s. Not heard on a hot phone on a
+  drive, and the far prompts (speaking priority, nice 8) were not timed under load.
+- A drive with Avoid on and no Google route takes Valhalla's avoiding route (#878): on the 4a
+  with Google off, a Davis fixture trip moved off I-80 and the "may still use" note was gone.
+  Not driven, and a trip with stops still gets no avoiding route without Google or a region.
+- A shared run whose open route piece leaves Google's line by more than 15 m is drawn on
+  Google's line (#895): unit test only. The reporter's trip today draws the same before and
+  after on a 4a, so whether this was their loop is not known.
+- A snapped route to a place ends where Google's line ends instead of at the pin: unit test.
+  The one store tried on the 4a has Google's own end 25 m from the pin, so no route there
+  changed; not yet seen moving a route.
+- Offline, the downloaded region under the view's center is drawn instead of the one the view
+  came from (#902): on the 4a, Montenegro then Kosovo downloaded, airplane mode, the center
+  moved into Kosovo with Montenegro still in the west of the view, and Kosovo mounted. Not
+  tried with regions of one country, and the neighbor beside the mounted region still draws
+  blank.
+- The phone arrow fitted to screens narrower than 1080 px (#911): builds. Not seen on a small
+  screen.
+- Takeout pins at 0,0 imported from their link, and a lists import of a saved places file
+  pointing to the right import (#920, #921): unit-tested. Not tried with a real Takeout file.
+- The free-drive follow turns heading-up only on speed held over 4 s (#905): builds. Not tried
+  on a phone or on foot.
+- A Google place asked for as the place, so the route ends at its entrance point
+  (`DestinationPlaces`): checked live on twelve fixture stores, the built request answering the
+  same route as the web client's own form. Not seen on a drive.
+- Full traces from the multi-select share (Save to phone, Share full traces): builds. Not tried
+  on a phone.
+- A recheck on the same roads never offered as a faster route (`RouteGeometry.sameRoad`):
+  unit-tested. Not seen on a drive.
+- A bare turn just past a ramp start said as a keep, and a lane clause on a ramp not saying the
+  side twice: unit-tested, and a recorded loop ramp replayed says "Keep right". Not heard.
+- Arrival short of the last turn only after 10 stopped fixes: unit-tested. Not seen on a drive.
+- A fork on an exit ramp kept as its own step instead of folded into the exit: unit-tested with
+  a fork 60 m and 300 m past the exit. Not heard on a drive.
+- A bare exit worded "Take the ramp toward" the road after it, and a next step due at once said
+  with the turn ("Take the ramp, then keep slight left"): unit-tested, and a recorded drive
+  replayed through the voice went from 30 lines to 27 with none a second apart. Not heard on a
+  drive; the replay re-folds the recorded steps rather than a fresh route.
 - Street names filling in mid-drive (`RouteHeal`). A simulated drive never re-checks, so it
   needs a real one. A trip's notes show it: a route whose totals line says `namingLate` or
   `bare=1`, then `recheck upgraded route for names`.
@@ -409,6 +535,9 @@ off the list when it has been.
   a drive started during the run.
 - The transit guidance pane's last card ends with Done (#811): seen on a 4a, a four-leg bus trip stepped to its end, the card's Back and Done, and Done back on the map.
 - An expanded transit route stays expanded across a swipe of the sheet (#812, `TransitExpanded`): seen on a 4a, a bus itinerary expanded, the sheet dropped to its card by its handle and raised again with the legs still open.
+- The transit guidance pane scrolls its legs, and Back and Next keep their height (#853). Not
+  seen on a phone: a current walk leg with its steps open, a ride leg with its stops open, the
+  list back at the top on each step, large fonts, landscape, and D-pad focus through the list.
 - One Share on the route picker (#814): seen on a 4a, Start and Add stops below, Route options, Share and Close in the header.
 - Saved routes named from a named start (#815): seen on a 4a, a trip from a named start saved under both names by default, and the list row with the start and the end under it; a route from the phone's own position still reads Route to the end.
 - Drawings and custom maps above the satellite imagery (#816): seen on a 4a, a three-point line
@@ -422,6 +551,11 @@ off the list when it has been.
   change before a corner. Not seen on a phone: a fork found past its point, a lane change
   smoothed out, a roundabout exit, the switch under Navigation turning them off mid-drive, or
   the car screen, which has none.
+- Turn arrows cut from the drawn line and redrawn inside it (round tail, plain head, thin indigo
+  edge; reports of arrows beside the line and a head that read as stuck on): seen on a 4a in a
+  simulated drive, a paused right turn with the arrow inside the line and no seam at the head;
+  unit tests for the drawn line and a curve. Not seen: a Google route whose drawn line was moved
+  to the road center, a tight curve on a ramp, or z18 on a phone.
 - The car's speed badge and limit sign sized with the screen (#817): seen on the desktop head
   unit's 800 by 480 profile in a demo drive, the badge and the sign at the template's button
   size. Not seen: the 1280 by 720 profile with the new sizes, or a real head unit.
@@ -503,6 +637,44 @@ off the list when it has been.
   stopped the app part way): seen on a 4a, a 63-row test list killed at row 36 kept the 12
   places found before its first save. Not seen: a real Takeout file imported again, which should
   take the rows it already matched with no lookup.
+- A roundabout's exit step says nothing after its entry (a real drive through two roundabouts
+  had each said twice and two lines cut off inside the ring): an engine test, which repeats
+  that drive's lines with the rule off, and the replay audit of the drive. Not heard on a drive.
+- One turn split in two by a mapped turn lane is said as one turn (a real drive heard two
+  slight rights for one right at a divided corner): a unit test, the drive's own route (folded),
+  and the 39 stored lines (three other folds, each a turn lane on the map). Not heard on a drive.
+- The heading term and a reroute's pinned heading need 5 m/s and a 30 m fix when driving (a
+  real drive downtown rerouted three times from GPS drift at a light): a unit test, and a replay
+  of that drive's fixes on its first route reroutes at 52 s before and never after. Not driven.
+- A recheck starts only from a real fix of 30 m or better with no off-route hits, and lands only
+  when that fix is on the result (a recheck from a dead-reckoned point swapped in a route 185 m
+  behind the car): a unit test of the two rules. Not driven.
+- A recheck's heal no longer starts the reroute cooldown (it held a needed reroute 8 s): code
+  only. Not driven.
+- One APK per chip type, on since 2026-10-22 (`ABI_SPLITS`, #680): not seen yet, a release
+  with the five files updated through Obtainium, the F-Droid repo and the in-app updater.
+- Saved drives on from the first screens, deleted after 30 days (`trip_auto_clear`): seen on a
+  4a with a fresh dev copy, the card with both switches on and both set after Continue. Not seen:
+  a drive actually deleted at 30 days (unit test of the rule only).
+- The destination's side when the router gives none (a drive got "You have arrived" instead of
+  the side), and the approach prompt saying that side instead of "ahead" (a drive heard "will be
+  ahead", then "is on the right"): unit tests. Not heard on a drive. The 17 other languages'
+  approach lines are built from their own stop lines and have not been checked by a speaker.
+- Transit guidance in a pocket (#880): seen on a 4a with a simulated position, the card for a
+  walk, a 42A ride with its stops left, the arrival card, End from the shade and Done. Not seen: a
+  real ride with the screen off, the heads-up at the stop before yours (unit tests only).
+- A reroute's naming snap starts the way the car points and skips vias on Google's own start
+  (an unpinned one went round a block): a unit test of the vias. Not driven.
+- A reroute whose first turn is too close to make at the car's speed is asked again once the car
+  is past it (a start against the route got a side-street U-turn 1 m ahead at 10 m/s): unit
+  tests, and the rule over every route swap in four recent traces fires on that one only. Not
+  driven.
+- The open router's reroute taken because Google's routes started against the car keeps
+  Google's clock and traffic (the ETA read 9 minutes until a heal 35 s later made it 12): code
+  only, through the helper trips with stops use. Not driven.
+- Place names More and Most (#852, `MapPoiPrefs.namesSooner`): not seen on a phone. Check names
+  arriving a zoom or two sooner on Vela data, Google and Both, and frame rate with Most in a
+  dense city on a release build (`scripts/map-fps.sh`).
 
 ### Open from the October 2026 audit
 
@@ -541,11 +713,6 @@ Found reading everything since 0.4.1912 and not fixed yet.
 
 ## On the radar
 
-- One APK per chip type. Built and off (`update/ApkChoice`, SPEC 15). Once a build with
-  `ApkChoice` has been the stable for about three weeks, set the repository variable
-  `ABI_SPLITS` to `true`, point the README install button at
-  `releases/latest/download/vela-maps-arm64.apk`, and say in the release notes which file to
-  take. An ARM phone then downloads 74 MB instead of 108.
 - Both-mode twins across scripts. With place icons set to Both, the twin pass compares
   Google's English names with the archive's local names. Over Tokyo on an English phone 38%
   link (65% under `hl=ja`), so open icons draw beside their Google twin. Options: run the

@@ -180,6 +180,13 @@ A part is listed in the app once the routing manifest carries it, so its place p
 basemap, road features and grid cells are baked first. A part downloaded before its own places
 and basemap archives exist would pull the whole state's.
 
+### Grid-cell boundaries
+
+Grid cells cover the region's land. A tile that only touches the region polygon at an edge or a
+corner, or lies in a bay of it, is not a cell. A re-bake keeps the cell size the region already
+has, so installed cells keep their ids. The clipping and cell-size rules are in
+[SPEC 7.6.1](../../SPEC.md#761-grid).
+
 ### How a manifest is published
 
 For places, basemap and grid cells the manifest is derived from the files on the release

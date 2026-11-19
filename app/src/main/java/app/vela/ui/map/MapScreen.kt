@@ -2609,18 +2609,16 @@ fun MapScreen(
             // (sheet reaches the corner) drops it, and the slim minimized bar brings it back.
             // sheetTopPx == 0 = unmeasured (first frame) - treated as covered, no flash.
             // Street View / pick-on-map keep a selected place with NO sheet composed, so the stale
-            // measurement must not show the button over the pano/picker - both are excluded.
+            // measurement must not show the button over the pano/picker - both are excluded. Street
+            // View opened from a link or a map tap has no selected place and is excluded too.
             val layersDensity = LocalDensity.current
             val layersButtonBottomPx = WindowInsets.statusBars.getTop(layersDensity) +
                 with(layersDensity) { ((if (landscapeChrome) 74.dp else 128.dp) + 42.dp + 8.dp).toPx() }
             // Landscape short-circuits the vertical test: the sheet is the width-capped LEFT
             // panel there, which never reaches the top-right corner whatever its detent.
             sheetEdge.layersBottom = layersButtonBottomPx
-            val clearOfPlaceSheet = state.selected == null ||
-                (
-                    state.streetView == null && !state.streetViewLoading && state.pickOnMap == null &&
-                        (landscapeChrome || sheetEdge.clearLayers.value)
-                    )
+            val clearOfPlaceSheet = state.streetView == null && !state.streetViewLoading &&
+                (state.selected == null || state.pickOnMap == null && (landscapeChrome || sheetEdge.clearLayers.value))
             // The expanded/results hides are portrait-only too: the landscape panel caps below
             // the search bar and never reaches this corner at ANY detent.
             // Not over the route chooser either (issue #405): the endpoints card owns that corner
@@ -6746,17 +6744,22 @@ private fun ListEditorDialog(
                 }
                 } // end scrolling form column
                 Spacer(Modifier.height(20.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // A flow, so a button that does not fit moves to the next line whole instead of
+                // being squeezed to its word broken over lines (#906).
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     if (onDelete != null) {
                         TextButton(onClick = onDelete, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
-                            Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error, maxLines = 1, softWrap = false)
                         }
+                        Spacer(Modifier.weight(1f))
                     }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel)) }
-                    Spacer(Modifier.width(4.dp))
+                    TextButton(onClick = onDismiss, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(stringResource(R.string.list_cancel), maxLines = 1, softWrap = false) }
                     Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color, alert) }, enabled = name.isNotBlank(), modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
-                        Text(stringResource(R.string.list_save))
+                        Text(stringResource(R.string.list_save), maxLines = 1, softWrap = false)
                     }
                 }
             }

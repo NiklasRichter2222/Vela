@@ -28,7 +28,8 @@ data class TripMeta(
 /**
  * Records navigation trips (the GPS trace + destination) to on-device files, so a
  * drive can be **replayed** later for testing turn-by-turn without driving it again.
- * Opt-in (the "save my trips" telemetry toggle) — strictly local, never uploaded.
+ * On from the first-run card for new installs, off by default before it (the "save my trips"
+ * switch); strictly local, never uploaded. Old drives can clear themselves ([pruneExpired]).
  *
  * Plain CSV (no JSON dep in `:app`): line 1 = `META,<label>,<startedAt>,<destLat>,<destLng>,
  * <versionCode>`, then one `lat,lng,t,bearing,speed,offRoute,accuracy` per fix. FLIGHT-RECORDER
@@ -70,6 +71,20 @@ class TripStore @Inject constructor(
         return id
     }
 
+    /** The recording trip's id, or null. */
+    val activeId: String? get() = active?.nameWithoutExtension
+
+    /** Record again into the trip [id] a killed process left behind, so a resumed drive stays
+     *  one trip. False when one is already recording or the file is gone (pruned, deleted). */
+    fun resumeTrip(id: String): Boolean = synchronized(lock) {
+        if (active != null) return false
+        val f = File(dir, "$id.csv")
+        if (!f.isFile) return false
+        active = f
+        lastFixWallMs = 0L
+        true
+    }
+
     /** Append a fix to the active trip (no-op if none is recording). */
     fun record(loc: Location, offRoute: Boolean = false, offRouteHits: Int = 0) = synchronized(lock) {
         val f = active ?: return
@@ -85,7 +100,20 @@ class TripStore @Inject constructor(
                 "${loc.latitude},${loc.longitude},${loc.time},${loc.bearing},${loc.speed}," +
                     "${if (offRoute) 1 else 0},${loc.accuracy},${loc.provider ?: ""},$offRouteHits\n",
             )
+            lastFixWallMs = System.currentTimeMillis()
         }
+        Unit
+    }
+
+    @Volatile private var lastFixWallMs = 0L
+
+    /** Append what the nav engine was just handed as an `N` line ([TripLog.Input]), timed from
+     *  the last fix line so a replay can hand it over at the same moment. No-op unless recording. */
+    fun recordInput(kind: Char, loc: LatLng, speedMps: Double?, accuracyM: Double?, bearingDeg: Double?) = synchronized(lock) {
+        val f = active ?: return
+        val now = System.currentTimeMillis()
+        val since = if (lastFixWallMs > 0L) now - lastFixWallMs else 0L
+        runCatching { f.appendText("N,$now," + TripLog.inputPayload(kind, since, loc, speedMps, accuracyM, bearingDeg) + "\n") }
         Unit
     }
 
@@ -187,6 +215,14 @@ class TripStore @Inject constructor(
     fun delete(id: String) {
         runCatching { File(dir, "$id.csv").delete() }
         if (active?.name == "$id.csv") active = null
+    }
+
+    /** Deletes the drives past [app.vela.core.replay.TripRetention.KEEP_DAYS], never the one being
+     *  recorded; returns how many went. */
+    fun pruneExpired(nowMs: Long = System.currentTimeMillis()): Int = synchronized(lock) {
+        val old = dir.listFiles { f -> f.extension == "csv" }.orEmpty()
+            .filter { it != active && app.vela.core.replay.TripRetention.expired(it.lastModified(), nowMs) }
+        old.count { runCatching { it.delete() }.getOrDefault(false) }
     }
 
     private fun readMeta(f: File): TripMeta? = runCatching {

@@ -60,9 +60,11 @@ versionCode: 38220
 Latest change: <newest user-facing commit subject>
 ```
 
-The nightly job publishes only if `main` has moved since the newest `v0.[0-9]*` tag. A manual
-dispatch of `ci.yml` does the same (`force` recuts the same commit) and is how a fix ships before
-the next cron. The title ends in "nightly" and the notes open with "Nightly build.", so that
+The nightly job publishes only if `main` has moved since the newest `v0.[0-9]*` tag. The cron
+also skips a `main` that moved only in files that never reach the app (docs, the website, repo
+metadata; `scripts/app-changed.sh`, the same list as the push filter), so the weekly reach
+snapshot cuts no nightly. A manual dispatch of `ci.yml` cuts whenever `main` moved (`force`
+recuts the same commit) and is how a fix ships before the next cron. The title ends in "nightly" and the notes open with "Nightly build.", so that
 someone reading them in the app can tell the channel.
 
 The promotion compares the newest prerelease and the newest full release whose tags match
@@ -151,10 +153,20 @@ its switch (`self_update_check`) and runs at most once in 20 hours.
   is fetched by the tag name the list gave (`appReleaseTags`), so a new version line such as
   `v0.5.<run>` needs no change in the app.
 - Canary reads `releases/tags/canary` and the version lines in its notes, and also runs the nightly
-  check. The higher code wins, so a canary that has fallen behind the nightlies strands nobody.
+  check. The nightly is taken only when its code is higher and it holds canary's commit, so a
+  canary that main has caught up with strands nobody. A nightly is cut from `main`, and a Weblate
+  merge or the weekly stats commit gives it a higher run number than a canary that is ahead of
+  `main`: by code alone it would replace canary's fixes with an older `main`. The check is one
+  `compare/<nightly commit>...<canary commit>` request, made only when the nightly's code is
+  higher, and it counts when the answer is `behind` or `identical`. It asks for page 2 at one
+  commit a page, which leaves out the file list: about 10 KB, where page 1 for a canary ahead of
+  `main` carried its whole diff (450 KB measured). A failed compare keeps canary, and so does a
+  canary release that cannot be read, which offers nothing: each push deletes it before making
+  the new one.
 
 The updater never fetches the releases list. The data releases carry about 450 assets each, and a
-check that listed them downloaded 4 to 9 MB. Every check logs one line under `VelaUpdate`.
+check that listed them downloaded 4 to 9 MB. Every check logs one line under `VelaUpdate`, and the
+canary compare one more.
 
 An update is offered when its code is above the installed one. A failed check returns nothing and
 the launch does not wait for it. Not now stores the offered code in `update_dismissed_code`, and
